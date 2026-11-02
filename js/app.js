@@ -6,7 +6,9 @@ const App = (() => {
   const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const put = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
   const route = () => { const [r, q] = location.hash.slice(1).split('?'); return { r: r || '', q: new URLSearchParams(q || '') }; };
-  const parentOk = code => get('dp-parent-' + code) === '1' || sessionStorage.getItem('dp-parent-' + code) === '1';
+  // which parent this device's parent screen is open for: 'mom' or 'dad'
+  const whoAmI = code => sessionStorage.getItem('dp-who-' + code) || get('dp-who-' + code) || '';
+  const parentOk = code => (get('dp-parent-' + code) === '1' || sessionStorage.getItem('dp-parent-' + code) === '1') && !!whoAmI(code);
   // the child's own lock: its PIN (or the parent's) opens the child's screen until the app is closed
   const childOk = code => parentOk(code) || sessionStorage.getItem('dp-child-' + code) === '1';
 
@@ -47,6 +49,7 @@ const App = (() => {
       + `<label>${T('Father’s name (optional)')}<input id="su-dad" maxlength="30" autocomplete="off"></label>`
       + `<label>${T('Father’s PIN (optional, 4 digits; opens the parent screen)')}<input id="su-pin2" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
       + `<label>${T('Child PIN (optional, 4 digits; opens the child’s screen)')}<input id="su-cpin" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
+      + `<label>${T('This phone belongs to')}<select id="su-me"><option value="mom">👩 ${T('Mother')}</option><option value="dad">👨 ${T('Father')}</option></select></label>`
       + `<label class="chk"><input type="checkbox" id="su-ex" checked> ${T('Start with examples (morning, school, swimming)')}</label>`
       + `<button class="btn big" data-su="create">${T('Make the plan')}</button><button class="link" data-su="start">${T('Back')}</button>`;
     if (err) h += `<p class="warn">${esc(err)}</p>`;
@@ -62,11 +65,12 @@ const App = (() => {
     if (s === 'create') {
       const name = $('#su-name').value.trim(), pin = $('#su-pin').value.trim(), pin2 = $('#su-pin2').value.trim(), cpin = $('#su-cpin').value.trim();
       if (!name) { setup('new', T('Write the child’s name')); return; }
+      const me = $('#su-me').value === 'dad' && pin2 ? 'dad' : 'mom';
       const bad = pinsBad(pin, pin2, cpin) || (pin ? '' : T('The PIN must be 4–8 digits'));
       if (bad) { const m = $('#su-mom').value, f = $('#su-dad').value; setup('new', bad); $('#su-name').value = name; $('#su-mom').value = m; $('#su-dad').value = f; return; }
       const code = rid(12), ex = $('#su-ex').checked;
       b.disabled = true;
-      put('dp-code', code); put('dp-parent-' + code, '1');
+      put('dp-code', code); put('dp-parent-' + code, '1'); put('dp-who-' + code, me);
       Store.open(code);
       const set = { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now() };
       const mom = $('#su-mom').value.trim(), dad = $('#su-dad').value.trim();
@@ -89,26 +93,37 @@ const App = (() => {
   // the parents' PIN hashes: the mother's (pin) and the father's (pin2); either opens the parent screen
   const parentPins = s => [s && s.pin, s && s.pin2].filter(Boolean);
 
-  /* ---- the PIN pad (resolves true when one of the right PINs is typed). For the child's lock (kind 'child') it takes
-     the child's PIN or a parent's; a parent's PIN opens both screens. ---- */
-  function askPin(code = Store.code, hash = parentPins(Store.data.settings), kind = 'parent', parentHash = [], set = Store.data.settings) {
-    const own = [].concat(hash || []).filter(Boolean), par = [].concat(parentHash || []).filter(Boolean);
-    // the pad names whose PIN it wants, when the names were given
-    const s = set || {}, names = kind === 'child' ? [s.child] : [s.mom, s.dad], who = names.filter(Boolean).join(' / ');
-    const title = who ? T('PIN for {0}', who) : T(kind === 'child' ? 'Child PIN' : 'Parent PIN');
+  // a family member's name ('mom', 'dad' or 'child'), or the word for them when no name was given
+  const nameOf = (w, s = Store.data.settings || {}) => ({ mom: s.mom || T('Mother'), dad: s.dad || T('Father'), child: s.child || T('the child') })[w] || '';
+
+  /* ---- the PIN pad (resolves true when the right PIN is typed). For the parent screen it first asks who you are (when
+     both parents have a PIN), then takes only that parent's PIN. For the child's lock (kind 'child') it takes the child's
+     PIN or a parent's; a parent's PIN opens both screens. ---- */
+  function askPin(code = Store.code, kind = 'parent', set = Store.data.settings) {
+    const s = set || {}, hashOf = { mom: s.pin, dad: s.pin2, child: s.cpin };
+    const parents = ['mom', 'dad'].filter(w => hashOf[w]);
+    let who = kind === 'child' ? 'child' : parents.length === 1 ? parents[0] : '';
     return new Promise(done => {
-      if (!own.length) { done(true); return; }
+      if (kind === 'child' ? !s.cpin : !parents.length) { done(true); return; }
       const p = document.createElement('div'); p.className = 'pinpad'; let v = '';
-      const draw = (bad) => { p.innerHTML = `<div class="pp-in${bad ? ' bad' : ''}"><h2>${esc(title)}</h2><div class="pp-dots">${'●'.repeat(v.length) || '&nbsp;'}</div><div class="pp-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '✕', 0, '⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('')}</div><button class="link" data-k="ok">${T('OK')}</button></div>`; };
+      const draw = (bad) => {
+        if (!who) { p.innerHTML = `<div class="pp-in"><h2>${T('Who are you?')}</h2><div class="pp-who">${parents.map(w => `<button data-who="${w}">${w === 'mom' ? '👩' : '👨'} ${esc(nameOf(w, s))}</button>`).join('')}</div><button class="link" data-k="✕">${T('Cancel')}</button></div>`; return; }
+        p.innerHTML = `<div class="pp-in${bad ? ' bad' : ''}"><h2>${esc(T('PIN for {0}', nameOf(who, s)))}</h2><div class="pp-dots">${'●'.repeat(v.length) || '&nbsp;'}</div><div class="pp-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '✕', 0, '⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('')}</div><button class="link" data-k="ok">${T('OK')}</button></div>`;
+      };
       const finish = r => { p.remove(); done(r); };
+      // a parent's PIN opens the parent screen for that parent until the app is closed (or the child's screen is opened)
+      const unlockAs = w => { if (w === 'child') sessionStorage.setItem('dp-child-' + code, '1'); else { sessionStorage.setItem('dp-parent-' + code, '1'); sessionStorage.setItem('dp-who-' + code, w); } };
       p.addEventListener('click', async e => {
         const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k;
+        if (b.dataset.who) { who = b.dataset.who; draw(); return; }
         if (k === '✕') return finish(false);
         if (k === '⌫') { v = v.slice(0, -1); draw(); return; }
         if (k !== 'ok') { if (v.length < 8) v += k; draw(); }
         if (v.length >= 4) {
           const h = await pinHash(code, v);
-          if (own.includes(h) || par.includes(h)) { sessionStorage.setItem('dp-' + (own.includes(h) ? kind : 'parent') + '-' + code, '1'); return finish(true); }
+          // the child's lock also opens with either parent's PIN
+          const w = h === hashOf[who] ? who : kind === 'child' ? parents.find(x => hashOf[x] === h) : '';
+          if (w) { unlockAs(w); return finish(true); }
         }
         if (k === 'ok' || v.length >= 8) { v = ''; draw(true); }
       });
@@ -135,16 +150,17 @@ const App = (() => {
       if (!parentOk(code)) {
         // the PIN from the database when this device has not got the plan yet
         let s = Store.data.settings; if (!parentPins(s).length) try { s = await Store.fetchSettings(code); } catch (e) {}
-        if (!(await askPin(code, parentPins(s), 'parent', [], s))) { location.hash = '#child'; return; }
+        if (!(await askPin(code, 'parent', s))) { location.hash = '#child'; return; }
       }
       put('dp-role', 'parent'); cur = Parent;
     } else if (r === 'child') {
       if (!childOk(code)) {
         let s = Store.data.settings; if (!s) try { s = await Store.fetchSettings(code); } catch (e) {}
-        if (s && s.cpin && !(await askPin(code, s.cpin, 'child', parentPins(s), s))) { locked(); return; }
+        if (s && s.cpin && !(await askPin(code, 'child', s))) { locked(); return; }
       }
-      // the child's screen locks the parent's: back to the parent screen only with the parent PIN
-      sessionStorage.setItem('dp-child-' + code, '1'); sessionStorage.removeItem('dp-parent-' + code); put('dp-parent-' + code, null);
+      // the child's screen locks the parent's: back to the parent screen only with a parent's name and PIN
+      sessionStorage.setItem('dp-child-' + code, '1');
+      for (const k of ['dp-parent-', 'dp-who-']) { sessionStorage.removeItem(k + code); put(k + code, null); }
       put('dp-role', 'child'); cur = Child;
     }
     else { location.replace('#' + (get('dp-role') || 'child')); return; }
@@ -156,8 +172,11 @@ const App = (() => {
     if (b.dataset.su) onSetup(b);
   });
   return {
-    askPin, pinsBad,
-    leave() { const c = get('dp-code'); put('dp-code', null); put('dp-role', null); put('dp-parent-' + c, null); location.hash = ''; location.reload(); },
+    askPin, pinsBad, nameOf,
+    // the parent whose parent screen this is ('mom' or 'dad'), and their name
+    who: () => whoAmI(Store.code),
+    whoName: () => nameOf(whoAmI(Store.code)),
+    leave() { const c = get('dp-code'); put('dp-code', null); put('dp-role', null); put('dp-parent-' + c, null); put('dp-who-' + c, null); location.hash = ''; location.reload(); },
     start() {
       setLang(LANG);
       addEventListener('hashchange', show);

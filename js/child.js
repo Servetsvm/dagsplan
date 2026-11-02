@@ -151,7 +151,7 @@ const Child = (() => {
     const a = al.act ? (D().acts || {})[al.act] : null; if (al.act && !a) return;
     st.alertNow = al;
     const box = $('#alert'), c = a ? catOf(a).c : '#0ea5e9', start = a ? mins(a.start) : 0, left = a ? start - nowMin() : 0;
-    const title = a ? a.title : al.msg.text, when = a ? (left > 0.5 ? T('in {0}', dur(left)) : T('Now')) + ' · ' + a.start : T('Message from home');
+    const title = a ? a.title : al.msg.text, when = a ? (left > 0.5 ? T('in {0}', dur(left)) : T('Now')) + ' · ' + a.start : al.msg.from ? T('Message from {0}', al.msg.from) : T('Message from home');
     box.style.setProperty('--c', c);
     box.innerHTML = `<div class="al-in"><div class="al-when">${esc(when)}</div>${a ? pic(a, 'xxl') : `<span class="pic emo xxl">${esc(al.msg.emoji || '💬')}</span>`}<h1>${esc(title)}</h1>`
       + (a && a.note ? `<p>${esc(a.note)}</p>` : '')

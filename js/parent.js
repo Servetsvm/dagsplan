@@ -61,14 +61,14 @@ const Parent = (() => {
       h += `<div class="card lrow"><div class="lr-h">${pic(l, 'sm')}<b>${esc(l.title)}</b></div><div class="lr-s">${e.done ? `<span class="ok">✓ ${T('Done at {0}', clockOf(e.done))}</span>` : `☑ ${it.filter(i => tk[i.id]).length}/${it.length}`}</div></div>`;
     }
     const m = S().msg;
-    if (m && m.ts && ymd(new Date(m.ts)) === d) h += `<div class="card">💬 ${esc(m.emoji || '')} ${esc(m.text)} · ${T('sent {0}', clockOf(m.ts))} · ${m.seen ? `<span class="ok">${T('seen {0}', clockOf(m.seen))}</span>` : `<span class="no">${T('not seen yet')}</span>`}</div>`;
+    if (m && m.ts && ymd(new Date(m.ts)) === d) h += `<div class="card">💬 ${esc(m.emoji || '')} ${esc(m.text)} · ${m.from ? esc(m.from) + ' · ' : ''}${T('sent {0}', clockOf(m.ts))} · ${m.seen ? `<span class="ok">${T('seen {0}', clockOf(m.seen))}</span>` : `<span class="no">${T('not seen yet')}</span>`}</div>`;
     return h;
   }
   function childLink() { return location.href.split('#')[0] + '#child?k=' + Store.code; }
   function settingsHtml() {
     const s = S(), f = s.ft || { first: {}, then: {} };
     // the family's names where they were given
-    const mom = esc(s.mom || T('the mother')), dad = esc(s.dad || T('the father')), kid = esc(s.child || T('the child'));
+    const me = App.who(), mom = esc(s.mom || T('the mother')), dad = esc(s.dad || T('the father')), kid = esc(s.child || T('the child'));
     return `<div class="card"><h3>💬 ${T('Send a message to the screen now')}</h3><p class="muted">${T('It shows full screen on the child’s screen with a sound, until they press Done.')}</p>`
       + `<div class="row"><button class="emo-btn" data-pick="msg-e">${esc(st.msgE || '💬')}</button><input id="msg-t" maxlength="80" placeholder="${T('e.g. Time to come home for dinner')}"><button class="btn" id="msg-send">${T('Send')}</button></div></div>`
       + `<div class="card"><h3>➜ ${T('First – then')}</h3><p class="muted">${T('Two big cards on the child’s screen: first this, then that.')}</p>`
@@ -79,8 +79,9 @@ const Parent = (() => {
       + `<label>${T('Mother’s name')}<input id="s-mom" maxlength="30" value="${esc(s.mom || '')}"></label>`
       + `<label>${T('Father’s name')}<input id="s-dad" maxlength="30" value="${esc(s.dad || '')}"></label>`
       + `<label>${T('Star goal per week')}<input id="s-goal" type="number" min="0" max="200" value="${esc(s.goal || 0)}"></label>`
-      + `<label>${T('New PIN for {0} (4 digits)', mom)}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
-      + `<label>${T('New PIN for {0} (4 digits)', dad)}<input id="s-pin2" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      // each parent changes only their own PIN (and sets the other's only while it is not set yet)
+      + (me === 'mom' || !s.pin ? `<label>${T('New PIN for {0} (4 digits)', mom)}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>` : `<p class="muted small">🔒 ${T('Only {0} can change their own PIN.', mom)}</p>`)
+      + (me === 'dad' || !s.pin2 ? `<label>${T('New PIN for {0} (4 digits)', dad)}<input id="s-pin2" inputmode="numeric" maxlength="8" placeholder="••••"></label>` : `<p class="muted small">🔒 ${T('Only {0} can change their own PIN.', dad)}</p>`)
       + `<p class="muted small">${s.pin2 ? '👩 👨 ' + T('{0} and {1} each have their own PIN.', mom, dad) : T('No PIN for {0} yet: only the PIN for {1} opens the parent screen.', dad, mom)}</p>`
       + `<label>${T('New PIN for {0} (4 digits; opens the child’s screen)', kid)}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
       + `<p class="muted small">${s.cpin ? '🔒 ' + T('The child’s screen asks for the PIN for {0}.', kid) : T('No PIN for {0}: the child’s screen opens without one.', kid)}</p>`
@@ -223,11 +224,12 @@ const Parent = (() => {
       case 'ldel': if (confirm(T('Delete “{0}”?', st.led.l.title))) { Store.remove('lists/' + st.led.id); closeEd(); } return;
     }
     switch (b.id) {
-      case 'msg-send': { const t = $('#msg-t').value.trim(); if (!t) { toast(T('Write the message')); return; } Store.set('settings/msg', { id: rid(6), text: t, emoji: st.msgE || '💬', ts: Date.now() }); $('#msg-t').value = ''; toast(T('Sent')); return; }
+      case 'msg-send': { const t = $('#msg-t').value.trim(); if (!t) { toast(T('Write the message')); return; } Store.set('settings/msg', { id: rid(6), text: t, emoji: st.msgE || '💬', ts: Date.now(), from: App.whoName() }); $('#msg-t').value = ''; toast(T('Sent')); return; }
       case 'ft-save': { const a = $('#ft1-t').value.trim(), c = $('#ft2-t').value.trim(), f = S().ft || { first: {}, then: {} }; if (!a || !c) { toast(T('Write both parts')); return; } Store.set('settings/ft', { first: { emoji: st.ft1 || f.first.emoji || '📚', text: a }, then: { emoji: st.ft2 || f.then.emoji || '🎮', text: c } }); st.ft1 = st.ft2 = null; toast(T('Saved')); return; }
       case 'ft-clear': Store.remove('settings/ft'); return;
       case 's-save': {
-        const pin = $('#s-pin').value.trim(), pin2 = $('#s-pin2').value.trim(), cpin = $('#s-cpin').value.trim(), up = { child: $('#s-name').value.trim(), mom: $('#s-mom').value.trim(), dad: $('#s-dad').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
+        const val = id => ($(id) ? $(id).value.trim() : '');
+        const pin = val('#s-pin'), pin2 = val('#s-pin2'), cpin = val('#s-cpin'), up = { child: $('#s-name').value.trim(), mom: $('#s-mom').value.trim(), dad: $('#s-dad').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
         const bad = App.pinsBad(pin, pin2, cpin); if (bad) { toast(bad); return; }
         if (pin) up.pin = await pinHash(Store.code, pin);
         if (pin2) up.pin2 = await pinHash(Store.code, pin2);
@@ -235,7 +237,7 @@ const Parent = (() => {
         // a new PIN may not be the same as one of the PINs kept
         const all = ['pin', 'pin2', 'cpin'].map(k => up[k] || S()[k]).filter(Boolean);
         if (new Set(all).size < all.length) { toast(T('The PINs must all be different')); return; }
-        Store.update('settings', up); $('#s-pin').value = $('#s-pin2').value = $('#s-cpin').value = ''; toast(T('Saved')); return;
+        Store.update('settings', up); for (const i of ['#s-pin', '#s-pin2', '#s-cpin']) if ($(i)) $(i).value = ''; toast(T('Saved')); return;
       }
       case 's-cpin-off': Store.remove('settings/cpin'); toast(T('Saved')); return;
       case 's-copy': { const i = $('#s-link'); i.select(); try { await navigator.clipboard.writeText(i.value); } catch (x) { document.execCommand('copy'); } toast(T('Copied')); return; }

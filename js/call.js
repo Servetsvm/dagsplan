@@ -41,7 +41,8 @@ const Call = (() => {
     draw();
     await pc.setLocalDescription(await pc.createOffer()); await gathered(pc);
     if (!st || st.id !== id) return;
-    Store.set('call', { id, from: sd, video: !!video, ts: Date.now(), offer: pc.localDescription.toJSON() }); st.sent = true;
+    // a parent's call says which parent is calling
+    Store.set('call', { id, from: sd, name: sd === 'parent' ? App.whoName() : '', video: !!video, ts: Date.now(), offer: pc.localDescription.toJSON() }); st.sent = true;
     st.timer = setTimeout(() => { if (st && st.id === id && !st.live) { toast(T('No answer')); end(); } }, 45000);
   }
   async function answer() {
@@ -75,7 +76,7 @@ const Call = (() => {
     }
     // a new call from the other side rings here (not an old one left behind)
     if (!c || !sd || c.from === sd || c.answer || Math.abs(Date.now() - (+c.ts || 0)) > 60000) return;
-    st = { id: c.id, dir: 'in', from: c.from, video: !!c.video };
+    st = { id: c.id, dir: 'in', from: c.from, name: c.name, video: !!c.video };
     draw(); ring();
   }
 
@@ -83,7 +84,7 @@ const Call = (() => {
     let el = $('#call');
     if (!st) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'call'; el.className = 'call'; el.addEventListener('click', onClick); document.body.appendChild(el); }
-    const who = esc(nameOf(st.dir === 'in' ? st.from : st.from === 'child' ? 'parent' : 'child'));
+    const who = esc(st.name || nameOf(st.dir === 'in' ? st.from : st.from === 'child' ? 'parent' : 'child'));
     const icon = st.video ? '📹' : '📞';
     let h;
     if (st.dir === 'in' && !st.pc) h = `<div class="call-mid"><div class="call-ico ringing">${icon}</div><h2>${T('{0} is calling', who)}</h2><p>${st.video ? T('Video call') : T('Voice call')}</p></div>`

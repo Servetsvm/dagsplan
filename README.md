@@ -38,7 +38,9 @@ The family's data lives at `f/<family code>`. The code is 12 random letters and 
 share it only within the family. Other devices (the child's, the other parent's) join by opening that link.
 
 The PINs only guard the screens on a device:
-- **the mother's PIN** and **the father's PIN** (optional): either opens the parent screen, and the child's screen too;
+- **the mother's PIN** and **the father's PIN** (optional): the parent screen first asks who you are, then that parent's
+  PIN; either PIN also opens the child's screen. Each parent changes only their own PIN (and the child's); the other
+  parent's PIN can be set only while it is not set yet. Messages and calls from the parent screen carry that parent's name;
 - **the child's PIN** (optional): opens the child's screen until the app is closed, never the parent screen.
 Opening the child's screen locks the parent screen again, so going back to it needs a parent PIN.
 
