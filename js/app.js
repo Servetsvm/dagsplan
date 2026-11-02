@@ -70,7 +70,7 @@ const App = (() => {
       if (bad) { const m = $('#su-mom').value, f = $('#su-dad').value; setup('new', bad); $('#su-name').value = name; $('#su-mom').value = m; $('#su-dad').value = f; return; }
       const code = rid(12), ex = $('#su-ex').checked;
       b.disabled = true;
-      put('dp-code', code); put('dp-parent-' + code, '1'); put('dp-who-' + code, me);
+      put('dp-code', code); put('dp-parent-' + code, '1'); put('dp-who-' + code, me); put('dp-home', 'parent');
       Store.open(code);
       const set = { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now() };
       const mom = $('#su-mom').value.trim(), dad = $('#su-dad').value.trim();
@@ -163,7 +163,8 @@ const App = (() => {
       for (const k of ['dp-parent-', 'dp-who-']) { sessionStorage.removeItem(k + code); put(k + code, null); }
       put('dp-role', 'child'); cur = Child;
     }
-    else { location.replace('#' + (get('dp-role') || 'child')); return; }
+    // the bare address opens the screen chosen for this device (Settings → This device), else the last one shown
+    else { location.replace('#' + (get('dp-home') || get('dp-role') || 'child')); return; }
     cur.start();
   }
   document.addEventListener('click', e => {
@@ -175,6 +176,9 @@ const App = (() => {
     askPin, pinsBad, nameOf,
     // the parent whose parent screen this is ('mom' or 'dad'), and their name
     who: () => whoAmI(Store.code),
+    // the screen the bare address opens on this device: 'child' or 'parent'
+    get home() { return get('dp-home') || get('dp-role') || 'child'; },
+    set home(v) { put('dp-home', v); },
     whoName: () => nameOf(whoAmI(Store.code)),
     leave() { const c = get('dp-code'); put('dp-code', null); put('dp-role', null); put('dp-parent-' + c, null); put('dp-who-' + c, null); location.hash = ''; location.reload(); },
     start() {

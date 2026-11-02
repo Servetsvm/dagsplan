@@ -89,6 +89,8 @@ const Parent = (() => {
       + `<div class="card"><h3>📱 ${T('The child’s screen')}</h3><p class="muted">${T('Open this link on the child’s tablet, phone or PC, then “Add to Home screen”.')} ${T('Another parent opens the same link and presses 🔒 Parent.')}</p>`
       + `<input readonly value="${esc(childLink())}" id="s-link"><div class="row"><button class="btn" id="s-copy">${T('Copy')}</button>${navigator.share ? `<button class="btn ghost" id="s-share">${T('Share')}</button>` : ''}<a class="btn ghost" href="#child">${T('Open the child’s screen here')}</a></div>`
       + (Store.cloud ? '' : `<p class="warn">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`) + '</div>'
+      + `<div class="card"><h3>💻 ${T('This device')}</h3><label>${T('When Dagsplan opens on this device, show')}<select id="s-home">`
+      + `<option value="parent"${App.home === 'parent' ? ' selected' : ''}>👨‍👩‍👧 ${T('the parent screen (asks the PIN)')}</option><option value="child"${App.home === 'child' ? ' selected' : ''}>👧 ${T('the child’s screen')}</option></select></label></div>`
       + `<div class="card"><h3>🔔 ${T('About reminders')}</h3><p class="muted">${T('Reminders are sure when the child’s screen is open (a tablet on the wall with the screen kept on is best). With the app in the background a notification is shown, sometimes a little late. When the app is closed, a web app cannot ring: that needs the Android app version later.')}</p></div>`
       + `<div class="card"><button class="btn ghost" id="s-leave">${T('Leave this family on this device')}</button></div>`;
   }
@@ -248,6 +250,7 @@ const Parent = (() => {
   async function onChange(e) {
     const t = e.target;
     if (t.id === 'p-lang') { setLang(t.value); render(); return; }
+    if (t.id === 's-home') { App.home = t.value; toast(T('Saved')); return; }
     if (t.id === 'e-img' && t.files[0]) { grab(); try { st.ed.a.img = await shrinkImage(t.files[0]); } catch (x) { toast(T('The picture could not be read')); } renderEd(); return; }
     if (t.dataset.itimg && t.files[0]) { grabL(); try { st.led.l.items[+t.dataset.itimg].img = await shrinkImage(t.files[0], 200); } catch (x) { toast(T('The picture could not be read')); } renderLed(); return; }
     if (t.id === 'e-date' && st.ed && st.ed.a.repeat === 'weekly' && !st.ed.id) { grab(); st.ed.a.days = String(weekday(t.value)); renderEd(); }

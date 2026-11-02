@@ -52,15 +52,17 @@ After changing files, raise `VERSION` in `sw.js` so installed devices pick up th
 
 ## Calls
 
-The 📹 (video) and 📞 (voice) buttons at the top of both screens call the other side: the child calls the parents'
-screens, a parent calls the child's screens. Every device of the other side that has Dagsplan open rings; the first to
-answer takes the call. The picture and sound go straight between the two devices (WebRTC); the database only carries
+The 📹 (video) and 📞 (voice) buttons at the top of both screens start a call. The child picks whom to call (the mother
+or the father) and only that parent's devices ring (where the parent screen is open with that parent's PIN); a parent
+calls the child's screens. Both sides see who calls whom. The first device to answer takes the call. The picture and sound go straight between the two devices (WebRTC); the database only carries
 the set-up (`f/<code>/call`), which is removed when the call ends.
 
 - A call reaches only a device with Dagsplan **open** on the child's or the parent screen (like the reminders).
 - The browser asks once for the camera and the microphone.
-- On some mobile networks two phones cannot reach each other directly; the call then says it could not connect. The fix
-  is a TURN relay server (for example a free Metered or Twilio account) added to `ICE` in `js/call.js`.
+- Between different networks (a phone on mobile data and a PC on Wi-Fi, two homes) the devices usually cannot reach
+  each other directly, and the call needs a **relay server (TURN)**. Make a free account at https://www.metered.ca/stun-turn
+  (TURN Server → create an app → copy the credentials API address with its apiKey) and put that address in `TURN.url` in
+  `js/config.js`. Without it the call says it could not connect.
 
 ## What reminders can and cannot do (web app limits)
 
