@@ -88,6 +88,10 @@ const Parent = (() => {
       + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button>${s.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the PIN for {0}', kid)}</button>` : ''}</div></div>`
       + `<div class="card"><h3>🔑 ${T('Family password')}</h3><p class="muted">${s.gate ? T('A new device opens Dagsplan with the family password only.') : T('No family password yet: set one, so a new device can open Dagsplan with it.')}</p>`
       + `<label>${T('New family password (at least 6 letters)')}<input id="s-gpw" type="password" autocomplete="new-password" autocapitalize="off"></label><button class="btn" id="s-gpw-save">${T('Save')}</button></div>`
+      // the relay address stays in the family's data, so it is never in the public code
+      + `<div class="card"><h3>📡 ${T('Calls between different networks')}</h3><p class="muted">${s.turn ? '✓ ' + T('The relay server is set: calls work between mobile data and Wi-Fi.') : T('Paste the relay server’s address (Metered → Show API Key), so calls work between mobile data and Wi-Fi.')}</p>`
+      + `<label>${T('Relay server address')}<input id="s-turn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://….metered.live/api/v1/turn/credentials?apiKey=…"></label>`
+      + `<div class="row"><button class="btn" id="s-turn-save">${T('Save')}</button>${s.turn ? `<button class="btn ghost" id="s-turn-off">${T('Remove')}</button>` : ''}</div></div>`
       + `<div class="card"><h3>📱 ${T('The child’s screen')}</h3><p class="muted">${T('Open this link on the child’s tablet, phone or PC, then “Add to Home screen”.')} ${T('Another parent opens the same link and presses 🔒 Parent.')}</p>`
       + `<input readonly value="${esc(childLink())}" id="s-link"><div class="row"><button class="btn" id="s-copy">${T('Copy')}</button>${navigator.share ? `<button class="btn ghost" id="s-share">${T('Share')}</button>` : ''}<a class="btn ghost" href="#child">${T('Open the child’s screen here')}</a></div>`
       + (Store.cloud ? '' : `<p class="warn">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`) + '</div>'
@@ -244,6 +248,15 @@ const Parent = (() => {
         Store.update('settings', up); for (const i of ['#s-pin', '#s-pin2', '#s-cpin']) if ($(i)) $(i).value = ''; toast(T('Saved')); return;
       }
       case 's-cpin-off': Store.remove('settings/cpin'); toast(T('Saved')); return;
+      case 's-turn-save': {
+        // checks the address gives relay servers before keeping it
+        const u = $('#s-turn').value.trim();
+        if (!/^https:\/\/[\w.-]+\/\S+$/.test(u)) { toast(T('That is not a relay server address')); return; }
+        let ok = false; try { const r = await fetch(u); ok = r.ok && Array.isArray(await r.json()); } catch (x) {}
+        if (!ok) { toast(T('That is not a relay server address')); return; }
+        Store.update('settings', { turn: u }); $('#s-turn').value = ''; toast(T('Saved')); return;
+      }
+      case 's-turn-off': Store.remove('settings/turn'); toast(T('Saved')); return;
       case 's-gpw-save': {
         // the new password's key points at this family; the old key is removed so the old password stops working
         const pw = $('#s-gpw').value; if (pw.trim().length < 6) { toast(T('The family password must have at least 6 letters')); return; }

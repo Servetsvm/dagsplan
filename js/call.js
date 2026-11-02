@@ -13,14 +13,17 @@ const Call = (() => {
   const self = () => document.body.dataset.role === 'child' ? 'child' : document.body.dataset.role === 'parent' ? App.who() : '';
   const S = () => Store.data.settings || {};
   const parents = () => ['mom', 'dad'].filter(w => S()[w === 'mom' ? 'pin' : 'pin2']);
-  const relayOn = () => !!((TURN.url || '') || (TURN.servers || []).length);
+  // the relay service's address: from the parents' Settings (kept in the family's data, not in the public code), else config.js
+  const relayUrl = () => S().turn || TURN.url || '';
+  const relayOn = () => !!(relayUrl() || (TURN.servers || []).length);
 
   // the relay servers: a fixed list, or fresh ones from the relay service's address (kept for an hour)
-  let ice = null, iceAt = 0;
+  let ice = null, iceAt = 0, iceFrom = '';
   async function iceServers() {
-    if (ice && Date.now() - iceAt < 3600e3) return ice;
+    if (ice && Date.now() - iceAt < 3600e3 && iceFrom === relayUrl()) return ice;
     let relay = TURN.servers || [];
-    if (TURN.url) try { const r = await fetch(TURN.url); if (r.ok) relay = await r.json(); } catch (e) {}
+    iceFrom = relayUrl();
+    if (iceFrom) try { const r = await fetch(iceFrom); if (r.ok) relay = await r.json(); } catch (e) {}
     ice = STUN.concat(relay); iceAt = Date.now(); return ice;
   }
   // the offer and the answer are sent whole, once the network addresses are gathered (no trickling)
