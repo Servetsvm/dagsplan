@@ -75,7 +75,10 @@ const Parent = (() => {
       + `<div class="row"><button class="btn" id="ft-save">${T('Show on the screen')}</button>${s.ft ? `<button class="btn ghost" id="ft-clear">${T('Remove')}</button>${s.ft.firstDone ? `<span class="ok">✓ ${T('First part done {0}', clockOf(s.ft.firstDone))}</span>` : ''}` : ''}</div></div>`
       + `<div class="card"><h3>👧 ${T('Child')}</h3><label>${T('Name')}<input id="s-name" maxlength="30" value="${esc(s.child || '')}"></label>`
       + `<label>${T('Star goal per week')}<input id="s-goal" type="number" min="0" max="200" value="${esc(s.goal || 0)}"></label>`
-      + `<label>${T('New parent PIN (4 digits)')}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label><button class="btn" id="s-save">${T('Save')}</button></div>`
+      + `<label>${T('New parent PIN (4 digits)')}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<label>${T('New child PIN (4 digits; opens the child’s screen)')}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<p class="muted small">${s.cpin ? '🔒 ' + T('The child’s screen asks for the child PIN.') : T('No child PIN: the child’s screen opens without one.')}</p>`
+      + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button>${s.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the child PIN')}</button>` : ''}</div></div>`
       + `<div class="card"><h3>📱 ${T('The child’s screen')}</h3><p class="muted">${T('Open this link on the child’s tablet, phone or PC, then “Add to Home screen”. Family code: {0}', `<b class="code">${esc(Store.code)}</b>`)}</p>`
       + `<input readonly value="${esc(childLink())}" id="s-link"><div class="row"><button class="btn" id="s-copy">${T('Copy')}</button>${navigator.share ? `<button class="btn ghost" id="s-share">${T('Share')}</button>` : ''}<a class="btn ghost" href="#child">${T('Open the child’s screen here')}</a></div>`
       + (Store.cloud ? '' : `<p class="warn">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`) + '</div>'
@@ -218,11 +221,14 @@ const Parent = (() => {
       case 'ft-save': { const a = $('#ft1-t').value.trim(), c = $('#ft2-t').value.trim(), f = S().ft || { first: {}, then: {} }; if (!a || !c) { toast(T('Write both parts')); return; } Store.set('settings/ft', { first: { emoji: st.ft1 || f.first.emoji || '📚', text: a }, then: { emoji: st.ft2 || f.then.emoji || '🎮', text: c } }); st.ft1 = st.ft2 = null; toast(T('Saved')); return; }
       case 'ft-clear': Store.remove('settings/ft'); return;
       case 's-save': {
-        const pin = $('#s-pin').value.trim(), up = { child: $('#s-name').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
-        if (pin && !/^\d{4,8}$/.test(pin)) { toast(T('The PIN must be 4–8 digits')); return; }
+        const pin = $('#s-pin').value.trim(), cpin = $('#s-cpin').value.trim(), up = { child: $('#s-name').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
+        if ((pin && !/^\d{4,8}$/.test(pin)) || (cpin && !/^\d{4,8}$/.test(cpin))) { toast(T('The PIN must be 4–8 digits')); return; }
         if (pin) up.pin = await pinHash(Store.code, pin);
-        Store.update('settings', up); $('#s-pin').value = ''; toast(T('Saved')); return;
+        if (cpin) up.cpin = await pinHash(Store.code, cpin);
+        if ((up.cpin || S().cpin) && (up.cpin || S().cpin) === (up.pin || S().pin)) { toast(T('The child PIN must differ from the parent PIN')); return; }
+        Store.update('settings', up); $('#s-pin').value = $('#s-cpin').value = ''; toast(T('Saved')); return;
       }
+      case 's-cpin-off': Store.remove('settings/cpin'); toast(T('Saved')); return;
       case 's-copy': { const i = $('#s-link'); i.select(); try { await navigator.clipboard.writeText(i.value); } catch (x) { document.execCommand('copy'); } toast(T('Copied')); return; }
       case 's-share': navigator.share({ title: 'Dagsplan', url: childLink() }).catch(() => {}); return;
       case 's-leave': if (confirm(T('Leave this family on this device? The plan itself is not deleted.'))) App.leave(); return;

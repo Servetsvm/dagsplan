@@ -50,6 +50,10 @@ const I18N = {
     "This is the child’s screen": "Dette er barnets skjerm", "I am a parent": "Jeg er forelder", "Write the child’s name": "Skriv barnets navn",
     "The code has 12 letters and digits": "Koden har 12 bokstaver og tall", "No connection — try again": "Ingen forbindelse – prøv igjen", "No family has this code": "Ingen familie har denne koden",
     "Parent PIN": "Foreldre-PIN", "OK": "OK",
+    "Child PIN": "Barne-PIN", "Child PIN (optional, 4 digits; opens the child’s screen)": "Barne-PIN (valgfri, 4 sifre; åpner barnets skjerm)",
+    "New child PIN (4 digits; opens the child’s screen)": "Ny barne-PIN (4 sifre; åpner barnets skjerm)", "The child PIN must differ from the parent PIN": "Barne-PIN må være ulik foreldre-PIN",
+    "The child’s screen asks for the child PIN.": "Barnets skjerm ber om barne-PIN.", "No child PIN: the child’s screen opens without one.": "Ingen barne-PIN: barnets skjerm åpnes uten.",
+    "Remove the child PIN": "Fjern barne-PIN", "The child’s screen is locked": "Barnets skjerm er låst", "Unlock": "Lås opp",
   },
   tr: {
     "School": "Okul", "Training": "Antrenman", "Home": "Ev", "Family": "Aile", "Other": "Diğer",
@@ -99,5 +103,9 @@ const I18N = {
     "This is the child’s screen": "Bu çocuğun ekranı", "I am a parent": "Ebeveynim", "Write the child’s name": "Çocuğun adını yazın",
     "The code has 12 letters and digits": "Kod 12 harf ve rakamdan oluşur", "No connection — try again": "Bağlantı yok – tekrar deneyin", "No family has this code": "Bu kodla bir aile yok",
     "Parent PIN": "Ebeveyn PIN'i", "OK": "Tamam",
+    "Child PIN": "Çocuk PIN'i", "Child PIN (optional, 4 digits; opens the child’s screen)": "Çocuk PIN'i (isteğe bağlı, 4 rakam; çocuk ekranını açar)",
+    "New child PIN (4 digits; opens the child’s screen)": "Yeni çocuk PIN'i (4 rakam; çocuk ekranını açar)", "The child PIN must differ from the parent PIN": "Çocuk PIN'i ebeveyn PIN'inden farklı olmalı",
+    "The child’s screen asks for the child PIN.": "Çocuk ekranı çocuk PIN'ini soruyor.", "No child PIN: the child’s screen opens without one.": "Çocuk PIN'i yok: çocuk ekranı PIN'siz açılır.",
+    "Remove the child PIN": "Çocuk PIN'ini kaldır", "The child’s screen is locked": "Çocuk ekranı kilitli", "Unlock": "Kilidi aç",
   },
 };

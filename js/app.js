@@ -7,6 +7,8 @@ const App = (() => {
   const put = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
   const route = () => { const [r, q] = location.hash.slice(1).split('?'); return { r: r || '', q: new URLSearchParams(q || '') }; };
   const parentOk = code => get('dp-parent-' + code) === '1' || sessionStorage.getItem('dp-parent-' + code) === '1';
+  // the child's own lock: its PIN (or the parent's) opens the child's screen until the app is closed
+  const childOk = code => parentOk(code) || sessionStorage.getItem('dp-child-' + code) === '1';
 
   // a few activities and lists to start from, in the chosen language (the parent changes or deletes them)
   function examples() {
@@ -41,6 +43,7 @@ const App = (() => {
     if (step === 'start') h += `<button class="btn big" data-su="new">👨‍👩‍👧 ${T('I am a parent: make a new plan')}</button><button class="btn big ghost" data-su="join">🔑 ${T('I have a family code')}</button>`;
     else if (step === 'new') h += `<label>${T('The child’s name')}<input id="su-name" maxlength="30" autocomplete="off"></label>`
       + `<label>${T('Parent PIN (4 digits; opens the parent screen on the child’s device)')}<input id="su-pin" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
+      + `<label>${T('Child PIN (optional, 4 digits; opens the child’s screen)')}<input id="su-cpin" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
       + `<label class="chk"><input type="checkbox" id="su-ex" checked> ${T('Start with examples (morning, school, swimming)')}</label>`
       + `<button class="btn big" data-su="create">${T('Make the plan')}</button><button class="link" data-su="start">${T('Back')}</button>`;
     else if (step === 'join') h += `<label>${T('Family code')}<input id="su-code" maxlength="20" autocomplete="off" autocapitalize="off" spellcheck="false"></label>`
@@ -56,14 +59,17 @@ const App = (() => {
     const s = b.dataset.su;
     if (s === 'new' || s === 'join' || s === 'start') { setup(s); return; }
     if (s === 'create') {
-      const name = $('#su-name').value.trim(), pin = $('#su-pin').value.trim();
+      const name = $('#su-name').value.trim(), pin = $('#su-pin').value.trim(), cpin = $('#su-cpin').value.trim();
       if (!name) { setup('new', T('Write the child’s name')); return; }
-      if (!/^\d{4,8}$/.test(pin)) { const v = name; setup('new', T('The PIN must be 4–8 digits')); $('#su-name').value = v; return; }
+      const bad = !/^\d{4,8}$/.test(pin) || (cpin && !/^\d{4,8}$/.test(cpin)) ? T('The PIN must be 4–8 digits') : cpin === pin ? T('The child PIN must differ from the parent PIN') : '';
+      if (bad) { setup('new', bad); $('#su-name').value = name; return; }
       const code = rid(12), ex = $('#su-ex').checked;
       b.disabled = true;
       put('dp-code', code); put('dp-parent-' + code, '1');
       Store.open(code);
-      Store.set('settings', { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now() });
+      const set = { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now() };
+      if (cpin) set.cpin = await pinHash(code, cpin);
+      Store.set('settings', set);
       if (ex) { const e = examples(); Store.set('acts', e.acts); Store.set('lists', e.lists); }
       go('#parent'); return;
     }
@@ -81,25 +87,36 @@ const App = (() => {
     }
   }
 
-  /* ---- the PIN pad (resolves true when the right PIN is typed) ---- */
-  function askPin(code = Store.code, hash = (Store.data.settings || {}).pin) {
+  /* ---- the PIN pad (resolves true when the right PIN is typed). For the child's lock (kind 'child') it takes the
+     child's PIN or the parent's; the parent's PIN opens both screens. ---- */
+  function askPin(code = Store.code, hash = (Store.data.settings || {}).pin, kind = 'parent', parentHash) {
     return new Promise(done => {
       if (!hash) { done(true); return; }
       const p = document.createElement('div'); p.className = 'pinpad'; let v = '';
-      const draw = (bad) => { p.innerHTML = `<div class="pp-in${bad ? ' bad' : ''}"><h2>${T('Parent PIN')}</h2><div class="pp-dots">${'●'.repeat(v.length) || '&nbsp;'}</div><div class="pp-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '✕', 0, '⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('')}</div><button class="link" data-k="ok">${T('OK')}</button></div>`; };
+      const draw = (bad) => { p.innerHTML = `<div class="pp-in${bad ? ' bad' : ''}"><h2>${T(kind === 'child' ? 'Child PIN' : 'Parent PIN')}</h2><div class="pp-dots">${'●'.repeat(v.length) || '&nbsp;'}</div><div class="pp-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '✕', 0, '⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('')}</div><button class="link" data-k="ok">${T('OK')}</button></div>`; };
       const finish = r => { p.remove(); done(r); };
       p.addEventListener('click', async e => {
         const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k;
         if (k === '✕') return finish(false);
         if (k === '⌫') { v = v.slice(0, -1); draw(); return; }
         if (k !== 'ok') { if (v.length < 8) v += k; draw(); }
-        if (v.length >= 4 && (await pinHash(code, v)) === hash) { sessionStorage.setItem('dp-parent-' + code, '1'); return finish(true); }
+        if (v.length >= 4) {
+          const h = await pinHash(code, v);
+          if (h === hash || (parentHash && h === parentHash)) { sessionStorage.setItem('dp-' + (h === hash ? kind : 'parent') + '-' + code, '1'); return finish(true); }
+        }
         if (k === 'ok' || v.length >= 8) { v = ''; draw(true); }
       });
       draw(); document.body.appendChild(p);
     });
   }
 
+  // the child's screen while its PIN has not been typed
+  function locked() {
+    document.body.dataset.role = 'setup';
+    const app = $('#app'); app.className = 'setup';
+    app.innerHTML = `<div class="su"><div class="logo">🔒</div><h1>${T('The child’s screen is locked')}</h1><button class="btn big" id="unlock">${T('Unlock')}</button></div>`;
+    $('#unlock').onclick = show;
+  }
   async function show() {
     const { r, q } = route();
     const k = (q.get('k') || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -115,7 +132,13 @@ const App = (() => {
         if (!(await askPin(code, h))) { location.hash = '#child'; return; }
       }
       put('dp-role', 'parent'); cur = Parent;
-    } else if (r === 'child') { put('dp-role', 'child'); cur = Child; }
+    } else if (r === 'child') {
+      if (!childOk(code)) {
+        let s = Store.data.settings; if (!s) try { s = await Store.fetchSettings(code); } catch (e) {}
+        if (s && s.cpin && !(await askPin(code, s.cpin, 'child', s.pin))) { locked(); return; }
+      }
+      put('dp-role', 'child'); cur = Child;
+    }
     else { location.replace('#' + (get('dp-role') || 'child')); return; }
     cur.start();
   }
