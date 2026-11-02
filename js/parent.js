@@ -14,7 +14,7 @@ const Parent = (() => {
   function top() {
     const s = S(), live = Store.cloud ? (Store.status === 'live' ? ['ok', T('Live')] : Store.status === 'denied' ? ['bad', T('No access')] : ['wait', T('Offline')]) : ['loc', T('Local mode')];
     return `<header class="p-top"><div class="p-brand">🗓️ <b>Dagsplan</b>${s.child ? ` <span>· ${esc(s.child)}</span>` : ''}</div>`
-      + `<span class="dotst ${live[0]}">${live[1]}</span><select id="p-lang" aria-label="Language">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${k === LANG ? ' selected' : ''}>${v}</option>`).join('')}</select></header>`
+      + `<span class="dotst ${live[0]}">${live[1]}</span><a class="p-child" href="#child">👧 ${T('Child’s screen')}</a><select id="p-lang" aria-label="Language">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${k === LANG ? ' selected' : ''}>${v}</option>`).join('')}</select></header>`
       + `<nav class="p-tabs">${[['plan', '📅', T('Plan')], ['lists', '☑️', T('Lists')], ['log', '👀', T('Log')], ['settings', '⚙️', T('Settings')]].map(([k, i, t]) => `<button data-ptab="${k}" class="${st.tab === k ? 'on' : ''}">${i} ${esc(t)}</button>`).join('')}</nav>`;
   }
   function dayNav(key, d) {

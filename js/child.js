@@ -1,6 +1,6 @@
 /* Dagsplan — the child's screen: the clock, today's plan with a "now" line, the countdown and time pie, full-screen
    reminders, checklists, the week, stars and first–then. Nothing here can be edited; a parent opens the parent screen
-   by holding the clock for 3 seconds and typing the PIN. */
+   with the 🔒 button (or by holding the clock for 3 seconds) and typing the PIN. */
 'use strict';
 const Child = (() => {
   const st = { tab: 'today', open: null, alerts: [], alertNow: null, alertTimer: null, started: false, lock: null, last: '' };
@@ -87,7 +87,7 @@ const Child = (() => {
     app.className = 'child';
     app.innerHTML = `<header class="c-top"><div class="c-clock" id="hold">${clockSvg()}<div><div class="c-time" id="c-time"></div><div class="c-date">${esc(dateLong(d))}</div><div class="c-part">${esc(dayPart(n))}</div></div></div>`
       + `<div class="c-right">${s.child ? `<div class="c-name">${esc(s.child)}</div>` : ''}<div class="c-stars">⭐ ${stars}${goal ? ' / ' + goal : ''}${goal ? `<div class="bar"><i style="width:${Math.min(100, stars / goal * 100)}%"></i></div>` : ''}</div>`
-      + `<button class="c-lang" id="c-lang" aria-label="Language">${LANG.toUpperCase()}</button></div></header>`
+      + `<div class="c-btns"><a class="c-lang" href="#parent">🔒 ${T('Parent')}</a><button class="c-lang" id="c-lang" aria-label="Language">${LANG.toUpperCase()}</button></div></div></header>`
       + (Store.status === 'offline' ? `<div class="offline">${T('No connection — showing the last plan')}</div>` : '')
       + `<main class="c-main">${main}</main>`
       + `<nav class="c-nav">${tabs.map(([k, i, t]) => `<button data-tab="${k}" class="${st.tab === k ? 'on' : ''}"><span>${i}</span>${esc(t)}</button>`).join('')}</nav>`;
