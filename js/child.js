@@ -87,6 +87,7 @@ const Child = (() => {
     app.className = 'child';
     app.innerHTML = `<header class="c-top"><div class="c-clock" id="hold">${clockSvg()}<div><div class="c-time" id="c-time"></div><div class="c-date">${esc(dateLong(d))}</div><div class="c-part">${esc(dayPart(n))}</div></div></div>`
       + `<div class="c-right">${s.child ? `<div class="c-name">${esc(s.child)}</div>` : ''}<div class="c-stars">⭐ ${stars}${goal ? ' / ' + goal : ''}${goal ? `<div class="bar"><i style="width:${Math.min(100, stars / goal * 100)}%"></i></div>` : ''}</div>`
+      + `<div class="c-btns"><button class="c-call" data-call="video" title="${T('Video call')}" aria-label="${T('Video call')}">📹</button><button class="c-call" data-call="audio" title="${T('Voice call')}" aria-label="${T('Voice call')}">📞</button></div>`
       + `<div class="c-btns"><a class="c-lang" href="#parent">🔒 ${T('Parent')}</a><button class="c-lang" id="c-lang" aria-label="Language">${LANG.toUpperCase()}</button></div></div></header>`
       + (Store.status === 'offline' ? `<div class="offline">${T('No connection — showing the last plan')}</div>` : '')
       + `<main class="c-main">${main}</main>`

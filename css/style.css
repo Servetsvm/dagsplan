@@ -75,6 +75,25 @@ h1 { margin: 6px 0; }
 .c-stars { font-size: 20px; font-weight: 700; min-width: 90px; }
 .c-lang { border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; color: var(--muted); text-decoration: none; }
 .c-btns { display: flex; gap: 6px; }
+.c-call, .p-call { font-size: 22px; width: 46px; height: 46px; border-radius: 50%; background: var(--card); border: 1.5px solid var(--line); box-shadow: var(--shadow); }
+.p-call { font-size: 18px; width: 38px; height: 38px; flex: none; }
+
+/* ---- a call (both screens) ---- */
+.call { position: fixed; inset: 0; z-index: 90; background: #0b1215; color: #fff; display: flex; flex-direction: column; justify-content: space-between; padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
+.call-remote { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.call-audio { display: none; }
+.call-local { position: absolute; right: 12px; top: 12px; width: 28vw; max-width: 160px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; border: 2px solid rgba(255,255,255,.6); background: #222; z-index: 2; transform: scaleX(-1); }
+.call-mid { position: relative; z-index: 1; text-align: center; margin-top: 12vh; }
+.call-mid.top { margin-top: 0; text-align: left; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+.call-mid.top h2 { font-size: 20px; } .call-mid.top p { margin: 0; }
+.call-mid h2 { font-size: 30px; margin: 14px 0 4px; } .call-mid p { opacity: .8; font-size: 18px; }
+.call-ico { font-size: 72px; width: 140px; height: 140px; margin: 0 auto; border-radius: 50%; background: rgba(255,255,255,.1); display: grid; place-items: center; }
+.call-ico.ringing { animation: callpulse 1.2s ease-in-out infinite; }
+@keyframes callpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(45,212,191,.6); } 50% { box-shadow: 0 0 0 26px rgba(45,212,191,0); } }
+.call-btns { position: relative; z-index: 1; display: flex; gap: 16px; justify-content: center; }
+.call-b { min-height: 64px; padding: 0 26px; border-radius: 999px; font-size: 20px; font-weight: 700; color: #fff; background: rgba(255,255,255,.18); }
+.call-b.yes { background: #16a34a; } .call-b.no { background: #dc2626; }
+.call-b.mute { width: 64px; padding: 0; } .call-b.mute.on { background: #f59e0b; }
 .offline { background: #fef3c7; color: #78350f; border-radius: 12px; padding: 6px 12px; text-align: center; }
 .c-main { flex: 1; padding-bottom: 96px; }
 .c-nav { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--card); box-shadow: 0 -2px 12px rgba(0,0,0,.08); z-index: 5; }

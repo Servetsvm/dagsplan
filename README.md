@@ -48,6 +48,18 @@ Like Bridge: a GitHub repository with GitHub Pages (Settings → Pages → Deplo
 https://app.netlify.com/drop. Open the address on each device and choose *Add to Home screen* / *Install app*.
 After changing files, raise `VERSION` in `sw.js` so installed devices pick up the new version.
 
+## Calls
+
+The 📹 (video) and 📞 (voice) buttons at the top of both screens call the other side: the child calls the parents'
+screens, a parent calls the child's screens. Every device of the other side that has Dagsplan open rings; the first to
+answer takes the call. The picture and sound go straight between the two devices (WebRTC); the database only carries
+the set-up (`f/<code>/call`), which is removed when the call ends.
+
+- A call reaches only a device with Dagsplan **open** on the child's or the parent screen (like the reminders).
+- The browser asks once for the camera and the microphone.
+- On some mobile networks two phones cannot reach each other directly; the call then says it could not connect. The fix
+  is a TURN relay server (for example a free Metered or Twilio account) added to `ICE` in `js/call.js`.
+
 ## What reminders can and cannot do (web app limits)
 
 | Situation on the child's device | Reminder |
@@ -76,6 +88,7 @@ Until then: keep the child's screen open on a tablet at home, and on the phone u
 | `js/core.js` | dates, repeat rules, stars, pictures, sound |
 | `js/store.js` | the family's data and the live sync (Firebase REST + EventSource, or this browser) |
 | `js/child.js` | the child's screen and reminders |
+| `js/call.js` | voice and video calls between the screens |
 | `js/parent.js` | the parent's screen |
 | `js/app.js` | setting up a family, the PIN pad and the PINs, which screen to show |
 | `css/style.css` | look and layout |
