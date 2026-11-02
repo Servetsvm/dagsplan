@@ -50,6 +50,8 @@ const App = (() => {
     app.innerHTML = h + '</div>';
     setup.step = step;
   }
+  // the setup page can itself be at #parent or #child, where setting the same hash fires no hashchange
+  const go = h => { if (location.hash === h) show(); else location.hash = h; };
   async function onSetup(b) {
     const s = b.dataset.su;
     if (s === 'new' || s === 'join' || s === 'start') { setup(s); return; }
@@ -63,7 +65,7 @@ const App = (() => {
       Store.open(code);
       Store.set('settings', { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now() });
       if (ex) { const e = examples(); Store.set('acts', e.acts); Store.set('lists', e.lists); }
-      location.hash = '#parent'; return;
+      go('#parent'); return;
     }
     if (s === 'asChild' || s === 'asParent') {
       const code = $('#su-code').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -75,7 +77,7 @@ const App = (() => {
         if (!(await askPin(code, set && set.pin))) return;
         put('dp-parent-' + code, '1');
       }
-      put('dp-code', code); Store.open(code); location.hash = s === 'asChild' ? '#child' : '#parent';
+      put('dp-code', code); Store.open(code); go(s === 'asChild' ? '#child' : '#parent');
     }
   }
 

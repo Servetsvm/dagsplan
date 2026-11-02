@@ -3,6 +3,6 @@
    kept in this browser only, and the parent and child screens sync only between tabs of the same browser. */
 'use strict';
 const FIREBASE = {
-  apiKey: '',        // e.g. 'AIzaSy…'
-  databaseURL: '',   // e.g. 'https://dagsplan-12345-default-rtdb.europe-west1.firebasedatabase.app'
+  apiKey: 'AIzaSyCy5gxpbF9BPmfKWKJSaNW71SG8YAEvZvI',
+  databaseURL: 'https://dagsplan-85435-default-rtdb.europe-west1.firebasedatabase.app',
 };
