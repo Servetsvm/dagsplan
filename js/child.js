@@ -4,7 +4,9 @@
 'use strict';
 const Child = (() => {
   const st = { tab: 'today', open: null, alerts: [], alertNow: null, alertTimer: null, started: false, lock: null, last: '' };
-  const D = () => Store.data;
+  // the plan as this device's child sees it (Settings → This device chooses the child when there are several)
+  const K = () => App.kid;
+  const D = () => kidView(Store.data, K());
   const S = () => D().settings || {};
 
   // the part of the day in words (helps to feel where in the day we are)
@@ -123,11 +125,11 @@ const Child = (() => {
   function closeOpen() { st.open = null; const ov = $('#ov'); ov.hidden = true; ov.innerHTML = ''; }
   function markDone(key, on) {
     const d = today();
-    if (on) { Store.set(`log/${d}/${key}/done`, Date.now()); celebrate(); } else Store.remove(`log/${d}/${key}/done`);
+    if (on) { Store.set(`${kidLog(K())}/${d}/${key}/done`, Date.now()); celebrate(); } else Store.remove(`${kidLog(K())}/${d}/${key}/done`);
   }
   function tick(itemId) {
     const d = today(), key = openKey(), lg = logOf(D(), d, key), on = !(lg.ticks || {})[itemId];
-    if (on) Store.set(`log/${d}/${key}/ticks/${itemId}`, Date.now()); else Store.remove(`log/${d}/${key}/ticks/${itemId}`);
+    if (on) Store.set(`${kidLog(K())}/${d}/${key}/ticks/${itemId}`, Date.now()); else Store.remove(`${kidLog(K())}/${d}/${key}/ticks/${itemId}`);
     const a = st.open.act ? (D().acts || {})[st.open.act] : null, items = itemsOf(listOf(D(), st.open.list || (a && a.list)));
     const t = (logOf(D(), d, key).ticks) || {};
     if (on && !lg.done && items.length && items.every(i => t[i.id])) markDone(key, true);
@@ -167,7 +169,7 @@ const Child = (() => {
   function ackAlert() {
     const al = st.alertNow; if (!al) return;
     clearInterval(st.alertTimer); stopVoice();
-    if (al.act) Store.set(`log/${al.date}/${al.act}/seen`, Date.now()); else Store.set('settings/msg/seen', Date.now());
+    if (al.act) Store.set(`${kidLog(K())}/${al.date}/${al.act}/seen`, Date.now()); else Store.set(kidBase(K()) + '/msg/seen', Date.now());
     st.alertNow = null; $('#alert').hidden = true;
     const a = al.act && (D().acts || {})[al.act];
     if (a && a.list) openAct(al.act);
@@ -205,7 +207,7 @@ const Child = (() => {
     if (b.id === 'undo') { markDone(openKey(), false); return; }
     if (b.id === 'al-ok') { ackAlert(); return; }
     if (b.id === 'al-voice') { const a = (D().acts || {})[st.alertNow.act]; if (a) playVoice(a.audio); return; }
-    if (b.id === 'ft-first') { const f = S().ft; if (f && !f.firstDone) { Store.set('settings/ft/firstDone', Date.now()); celebrate(); } return; }
+    if (b.id === 'ft-first') { const f = S().ft; if (f && !f.firstDone) { Store.set(kidBase(K()) + '/ft/firstDone', Date.now()); celebrate(); } return; }
     if (b.id === 'c-lang') { const L = Object.keys(LANGS); setLang(L[(L.indexOf(LANG) + 1) % L.length]); render(); return; }
   }
   // hold the clock for 3 seconds: the PIN, then the parent screen

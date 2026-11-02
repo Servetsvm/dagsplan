@@ -12,13 +12,13 @@ const Call = (() => {
   const dev = rid(8);        // this device: which of a person's ringing devices answered
   const RING = 45000;        // how long a call rings
   let st = null;             // the call here: { id, pick, video, ringing, joined, at, local, peers {who: {pc, remote, connected, answered}}, muted }
-  // who this device is in a call: 'child' on the child's screen, 'mom' or 'dad' on the parent screen
-  const self = () => document.body.dataset.role === 'child' ? 'child' : document.body.dataset.role === 'parent' ? App.who() : '';
+  // who this device is in a call: its child on the child's screen ('child' or a further child's id), 'mom' or 'dad' on the parent screen
+  const self = () => document.body.dataset.role === 'child' ? App.kid : document.body.dataset.role === 'parent' ? App.who() : '';
   const S = () => Store.data.settings || {};
-  // the family members who can be called: the parents with a PIN, and the child
-  const people = () => ['mom', 'dad'].filter(w => S()[w === 'mom' ? 'pin' : 'pin2']).concat('child');
+  // the family members who can be called: the parents with a PIN, and the children
+  const people = () => ['mom', 'dad'].filter(w => S()[w === 'mom' ? 'pin' : 'pin2']).concat(kidsOf(S()).map(k => k.id));
   const nameOf = w => App.nameOf(w);
-  const icon = w => ({ mom: '👩', dad: '👨', child: '👧' })[w] || '🙂';
+  const icon = w => ({ mom: '👩', dad: '👨' })[w] || '👧';
   const pairKey = (a, b) => a + '~' + b;
 
   // the relay service's address: from the parents' Settings (kept in the family's data, not in the public code), else config.js

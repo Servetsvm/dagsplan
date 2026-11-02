@@ -58,6 +58,25 @@ function dayActs(data, d) {
 const listOf = (data, id) => (id && data.lists && data.lists[id]) || null;
 const itemsOf = l => (l && Array.isArray(l.items) ? l.items.filter(Boolean) : Object.values((l && l.items) || {}));
 const logOf = (data, d, id) => (((data.log || {})[d] || {})[id]) || {};
+/* ---- the children ----
+   The first child is 'child': its name, PIN (cpin), star goal, message and first–then stay in settings as before there
+   could be more, and its ticks in log/. Each further child is settings/kids/<id> { name, cpin, goal, msg, ft } with its
+   ticks in klog/<id>/. An activity with no kid is for every child; one with kid: <id> only for that child. */
+function kidsOf(s) {
+  s = s || {};
+  return [{ id: 'child', name: s.child || '' }].concat(Object.entries(s.kids || {}).filter(([, k]) => k).map(([id, k]) => ({ id, name: k.name || '' })));
+}
+const kidBase = k => !k || k === 'child' ? 'settings' : 'settings/kids/' + k;   // where the child's own settings are written
+const kidLog = k => !k || k === 'child' ? 'log' : 'klog/' + k;                   // where the child's ticks are written
+// the plan as one child sees it: the activities for every child and its own, its ticks, and its own settings as settings.child/goal/…
+function kidView(data, k) {
+  data = data || {}; k = k || 'child';
+  const s = data.settings || {}, own = k === 'child' ? s : ((s.kids || {})[k] || {}), acts = {};
+  for (const [id, a] of Object.entries(data.acts || {})) if (a && (!a.kid || a.kid === k)) acts[id] = a;
+  return { ...data, acts, log: k === 'child' ? (data.log || {}) : ((data.klog || {})[k] || {}),
+    settings: { ...s, child: k === 'child' ? s.child : own.name, goal: own.goal, cpin: own.cpin, msg: own.msg, ft: own.ft } };
+}
+
 // the stars of a week: each finished activity gives its stars (1 when not set)
 function weekStars(data, d) {
   const mon = mondayOf(d); let n = 0;

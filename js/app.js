@@ -46,6 +46,7 @@ const App = (() => {
     if (step === 'start') h += `<label>🔑 ${T('Family password')}<input id="su-pw" type="password" autocomplete="current-password" autocapitalize="off"></label>`
       + `<button class="btn big" data-su="pw">${T('Open')}</button><p class="muted small">${T('Ask a parent for the family password.')}</p>`;
     else if (step === 'device') h += `<p>${T('Who uses this device?')}</p><button class="btn big" data-su="asChild">👧 ${T('The child')}</button><button class="btn big ghost" data-su="asParent">👨‍👩‍👧 ${T('A parent')}</button>`;
+    else if (step === 'kid') h += `<p>${T('Which child uses this device?')}</p>` + (setup.kids || []).map(k => `<button class="btn big" data-su="kid" data-kid="${esc(k.id)}">👧 ${esc(k.name || T('the child'))}</button>`).join('');
     else if (step === 'new') h += `<label>🔑 ${T('Family password (at least 6 letters; opens Dagsplan on a new device)')}<input id="su-gpw" type="password" autocomplete="new-password" autocapitalize="off"></label>`
       + `<label>${T('The child’s name')}<input id="su-name" maxlength="30" autocomplete="off"></label>`
       + `<label>${T('Mother’s name')}<input id="su-mom" maxlength="30" autocomplete="off"></label>`
@@ -72,7 +73,15 @@ const App = (() => {
       if (!code) { setup('start', T('Wrong family password')); return; }
       put('dp-code', code); Store.open(code); setup('device'); return;
     }
-    if (s === 'asChild' || s === 'asParent') { const r = s === 'asChild' ? 'child' : 'parent'; put('dp-home', r); go('#' + r); return; }
+    if (s === 'asChild') {
+      // with several children: which one this device is for
+      let set = Store.data.settings; if (!set) try { set = await Store.fetchSettings(Store.code); } catch (e) {}
+      const kids = kidsOf(set);
+      if (kids.length > 1) { setup.kids = kids; setup('kid'); return; }
+      put('dp-kid', 'child'); put('dp-home', 'child'); go('#child'); return;
+    }
+    if (s === 'kid') { put('dp-kid', b.dataset.kid); put('dp-home', 'child'); go('#child'); return; }
+    if (s === 'asParent') { put('dp-home', 'parent'); go('#parent'); return; }
     if (s === 'create') {
       const name = $('#su-name').value.trim(), pin = $('#su-pin').value.trim(), pin2 = $('#su-pin2').value.trim(), cpin = $('#su-cpin').value.trim(), gpw = $('#su-gpw').value;
       // keeps what was typed when the form is shown again with a message
@@ -109,8 +118,10 @@ const App = (() => {
   // the parents' PIN hashes: the mother's (pin) and the father's (pin2); either opens the parent screen
   const parentPins = s => [s && s.pin, s && s.pin2].filter(Boolean);
 
-  // a family member's name ('mom', 'dad' or 'child'), or the word for them when no name was given
-  const nameOf = (w, s = Store.data.settings || {}) => ({ mom: s.mom || T('Mother'), dad: s.dad || T('Father'), child: s.child || T('the child') })[w] || '';
+  // a family member's name ('mom', 'dad', or a child: 'child' or a further child's id), or the word for them when no name was given
+  const nameOf = (w, s = Store.data.settings || {}) => !w ? '' : w === 'mom' ? (s.mom || T('Mother')) : w === 'dad' ? (s.dad || T('Father')) : ((kidsOf(s).find(k => k.id === w) || {}).name || T('the child'));
+  // the child this device's child screen is for (Settings → This device; the first child when not chosen)
+  const kidOf = s => { const k = get('dp-kid'); return kidsOf(s).some(x => x.id === k) ? k : 'child'; };
 
   /* ---- the PIN pad (resolves true when the right PIN is typed). For the parent screen it first asks who you are (when
      both parents have a PIN), then takes only that parent's PIN. For the child's lock (kind 'child') it takes the child's
@@ -172,6 +183,8 @@ const App = (() => {
     } else if (r === 'child') {
       if (!childOk(code)) {
         let s = Store.data.settings; if (!s) try { s = await Store.fetchSettings(code); } catch (e) {}
+        // this device's child: its own PIN (settings as that child sees them)
+        if (s) s = kidView({ settings: s }, kidOf(s)).settings;
         if (s && s.cpin && !(await askPin(code, 'child', s))) { locked(); return; }
       }
       // the child's screen locks the parent's: back to the parent screen only with a parent's name and PIN
@@ -195,6 +208,8 @@ const App = (() => {
     // the screen the bare address opens on this device: 'child' or 'parent'
     get home() { return get('dp-home') || get('dp-role') || 'child'; },
     set home(v) { put('dp-home', v); },
+    get kid() { return kidOf(Store.data.settings); },
+    set kid(v) { put('dp-kid', v); },
     whoName: () => nameOf(whoAmI(Store.code)),
     leave() { const c = get('dp-code'); put('dp-code', null); put('dp-role', null); put('dp-parent-' + c, null); put('dp-who-' + c, null); location.hash = ''; location.reload(); },
     start() {

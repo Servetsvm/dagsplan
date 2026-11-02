@@ -56,6 +56,14 @@ Like Bridge: a GitHub repository with GitHub Pages (Settings → Pages → Deplo
 https://app.netlify.com/drop. Open the address on each device and choose *Add to Home screen* / *Install app*.
 After changing files, raise `VERSION` in `sw.js` so installed devices pick up the new version.
 
+## Several children
+
+Settings → the child card → **Add a child**. With more than one child the parent screen shows whose plan it is (a row of
+names at the top): the plan, the log, the stars, the message and first–then are each child's own. A new activity is for
+the child shown, or for every child (**For whom?** in the editor). Each child has their own PIN, and each device's
+child's screen is for one child (asked when the device joins with the family password, or Settings → This device). The
+first child keeps its data where it was (settings, log/); a further child is settings/kids/<id> with its ticks in klog/<id>.
+
 ## Calls
 
 The 📹 (video) and 📞 (voice) buttons at the top of both screens start a call. The child picks whom to call (the mother

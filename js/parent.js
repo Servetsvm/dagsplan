@@ -2,9 +2,14 @@
    checklist, reminder), checklists, what the child has ticked and confirmed, and the settings. */
 'use strict';
 const Parent = (() => {
-  const st = { tab: 'plan', day: today(), view: 'day', ed: null, led: null, logDay: today() };
-  const D = () => Store.data;
-  const S = () => D().settings || {};
+  const st = { tab: 'plan', day: today(), view: 'day', ed: null, led: null, logDay: today(), kid: null };
+  // the child shown (the plan, the log, the message and first–then are each child's own); the device's child at first
+  const kids = () => kidsOf(Store.data.settings);
+  const K = () => kids().some(k => k.id === st.kid) ? st.kid : (st.kid = App.kid);
+  const D = () => kidView(Store.data, K());
+  const S = () => Store.data.settings || {};
+  const KS = () => D().settings;
+  const kidName = k => App.nameOf(k || K());
   const REM = { sound: ['🔔', 'Sound'], voice: ['🎤', 'Voice message'], silent: ['🔕', 'Silent (screen only)'], none: ['', 'No reminder'] };
   const REP = { none: 'Once', daily: 'Every day', weekly: 'Every week' };
   // Monday first; the digit is JavaScript's weekday (0 = Sunday)
@@ -13,9 +18,11 @@ const Parent = (() => {
 
   function top() {
     const s = S(), live = Store.cloud ? (Store.status === 'live' ? ['ok', T('Live')] : Store.status === 'denied' ? ['bad', T('No access')] : ['wait', T('Offline')]) : ['loc', T('Local mode')];
-    return `<header class="p-top"><div class="p-brand">🗓️ <b>Dagsplan</b>${s.child ? ` <span>· ${esc(s.child)}</span>` : ''}</div>`
-      + `<span class="dotst ${live[0]}">${live[1]}</span><button class="p-call" data-call="video" title="${T('Video call')}" aria-label="${T('Video call')}">📹</button><button class="p-call" data-call="audio" title="${T('Voice call')}" aria-label="${T('Voice call')}">📞</button><a class="p-child" href="#child">👧 ${T('Child’s screen')}</a><select id="p-lang" aria-label="Language">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${k === LANG ? ' selected' : ''}>${v}</option>`).join('')}</select></header>`
-      + `<nav class="p-tabs">${[['plan', '📅', T('Plan')], ['lists', '☑️', T('Lists')], ['log', '👀', T('Log')], ['settings', '⚙️', T('Settings')]].map(([k, i, t]) => `<button data-ptab="${k}" class="${st.tab === k ? 'on' : ''}">${i} ${esc(t)}</button>`).join('')}</nav>`;
+    return `<header class="p-top"><div class="p-brand">🗓️ <b>Dagsplan</b>${kids().length === 1 && s.child ? ` <span>· ${esc(s.child)}</span>` : ''}</div>`
+      + `<span class="dotst ${live[0]}">${live[1]}</span><button class="p-call" data-call="video" title="${T('Video call')}" aria-label="${T('Video call')}">📹</button><button class="p-call" data-call="audio" title="${T('Voice call')}" aria-label="${T('Voice call')}">📞</button><button class="p-child" data-childscreen="1">👧 ${T('Child’s screen')}</button><select id="p-lang" aria-label="Language">${Object.entries(LANGS).map(([k, v]) => `<option value="${k}"${k === LANG ? ' selected' : ''}>${v}</option>`).join('')}</select></header>`
+      + `<nav class="p-tabs">${[['plan', '📅', T('Plan')], ['lists', '☑️', T('Lists')], ['log', '👀', T('Log')], ['settings', '⚙️', T('Settings')]].map(([k, i, t]) => `<button data-ptab="${k}" class="${st.tab === k ? 'on' : ''}">${i} ${esc(t)}</button>`).join('')}</nav>`
+      // with several children: whose plan is shown
+      + (kids().length > 1 && st.tab !== 'lists' ? `<div class="kidbar">${kids().map(k => `<button data-kid="${esc(k.id)}" class="${K() === k.id ? 'on' : ''}">👧 ${esc(k.name || T('the child'))}</button>`).join('')}</div>` : '');
   }
   function dayNav(key, d) {
     return `<div class="daynav"><button data-nav="${key}" data-n="${st.view === 'week' && key === 'day' ? -7 : -1}" aria-label="${T('Back')}">‹</button><b>${esc(st.view === 'week' && key === 'day' ? T('Week of {0}', dateShort(mondayOf(d))) : dateLong(d))}</b>`
@@ -47,7 +54,7 @@ const Parent = (() => {
       : `<div class="empty">${T('No checklists yet')}</div>`) + `<button class="btn-add" data-new="list">＋ ${T('New checklist')}</button>`;
   }
   function logHtml() {
-    const d = st.logDay, acts = dayActs(D(), d), goal = +S().goal || 0, stars = weekStars(D(), d), L = (D().log || {})[d] || {};
+    const d = st.logDay, acts = dayActs(D(), d), goal = +KS().goal || 0, stars = weekStars(D(), d), L = (D().log || {})[d] || {};
     let h = dayNav('log', d) + `<div class="card stars"><b>⭐ ${T('{0} stars this week', stars)}</b>${goal ? ` <span>${T('goal {0}', goal)}</span><div class="bar"><i style="width:${Math.min(100, stars / goal * 100)}%"></i></div>` : ''}</div>`;
     h += acts.length ? acts.map(a => {
       const it = itemsOf(listOf(D(), a.list)), tk = logOf(D(), d, a.id).ticks || {};
@@ -60,32 +67,44 @@ const Parent = (() => {
       const it = itemsOf(l), tk = e.ticks || {};
       h += `<div class="card lrow"><div class="lr-h">${pic(l, 'sm')}<b>${esc(l.title)}</b></div><div class="lr-s">${e.done ? `<span class="ok">✓ ${T('Done at {0}', clockOf(e.done))}</span>` : `☑ ${it.filter(i => tk[i.id]).length}/${it.length}`}</div></div>`;
     }
-    const m = S().msg;
+    const m = KS().msg;
     if (m && m.ts && ymd(new Date(m.ts)) === d) h += `<div class="card">💬 ${esc(m.emoji || '')} ${esc(m.text)} · ${m.from ? esc(m.from) + ' · ' : ''}${T('sent {0}', clockOf(m.ts))} · ${m.seen ? `<span class="ok">${T('seen {0}', clockOf(m.seen))}</span>` : `<span class="no">${T('not seen yet')}</span>`}</div>`;
     return h;
   }
+  // all the PINs (the parents' and every child's) with the new ones in up ({pin, pin2} or {'cpin:<kid>': hash}) are different
+  function pinsApart(up) {
+    const s = S(), cur = { pin: s.pin, pin2: s.pin2 };
+    for (const k of kids()) cur['cpin:' + k.id] = kidView(Store.data, k.id).settings.cpin;
+    for (const [k, v] of Object.entries(up)) if (v && (k === 'pin' || k === 'pin2' || k.startsWith('cpin:'))) cur[k] = v;
+    const all = Object.values(cur).filter(Boolean);
+    return new Set(all).size === all.length;
+  }
   function childLink() { return location.href.split('#')[0] + '#child?k=' + Store.code; }
   function settingsHtml() {
-    const s = S(), f = s.ft || { first: {}, then: {} };
+    const s = S(), ks = KS(), f = ks.ft || { first: {}, then: {} }, many = kids().length > 1;
     // the family's names where they were given
-    const me = App.who(), mom = esc(s.mom || T('the mother')), dad = esc(s.dad || T('the father')), kid = esc(s.child || T('the child'));
-    return `<div class="card"><h3>💬 ${T('Send a message to the screen now')}</h3><p class="muted">${T('It shows full screen on the child’s screen with a sound, until they press Done.')}</p>`
+    const me = App.who(), mom = esc(s.mom || T('the mother')), dad = esc(s.dad || T('the father')), kid = esc(kidName());
+    return `<div class="card"><h3>💬 ${T('Send a message to the screen now')}${many ? ' · ' + kid : ''}</h3><p class="muted">${T('It shows full screen on the child’s screen with a sound, until they press Done.')}</p>`
       + `<div class="row"><button class="emo-btn" data-pick="msg-e">${esc(st.msgE || '💬')}</button><input id="msg-t" maxlength="80" placeholder="${T('e.g. Time to come home for dinner')}"><button class="btn" id="msg-send">${T('Send')}</button></div></div>`
-      + `<div class="card"><h3>➜ ${T('First – then')}</h3><p class="muted">${T('Two big cards on the child’s screen: first this, then that.')}</p>`
+      + `<div class="card"><h3>➜ ${T('First – then')}${many ? ' · ' + kid : ''}</h3><p class="muted">${T('Two big cards on the child’s screen: first this, then that.')}</p>`
       + `<div class="row"><b class="lbl">${T('First')}</b><button class="emo-btn" data-pick="ft1">${esc(st.ft1 || f.first.emoji || '📚')}</button><input id="ft1-t" maxlength="40" value="${esc(f.first.text || '')}" placeholder="${T('e.g. Homework')}"></div>`
       + `<div class="row"><b class="lbl">${T('Then')}</b><button class="emo-btn" data-pick="ft2">${esc(st.ft2 || f.then.emoji || '🎮')}</button><input id="ft2-t" maxlength="40" value="${esc(f.then.text || '')}" placeholder="${T('e.g. 30 min gaming')}"></div>`
-      + `<div class="row"><button class="btn" id="ft-save">${T('Show on the screen')}</button>${s.ft ? `<button class="btn ghost" id="ft-clear">${T('Remove')}</button>${s.ft.firstDone ? `<span class="ok">✓ ${T('First part done {0}', clockOf(s.ft.firstDone))}</span>` : ''}` : ''}</div></div>`
-      + `<div class="card"><h3>👨‍👩‍👧 ${T('Family')}</h3><label>${T('The child’s name')}<input id="s-name" maxlength="30" value="${esc(s.child || '')}"></label>`
+      + `<div class="row"><button class="btn" id="ft-save">${T('Show on the screen')}</button>${ks.ft ? `<button class="btn ghost" id="ft-clear">${T('Remove')}</button>${ks.ft.firstDone ? `<span class="ok">✓ ${T('First part done {0}', clockOf(ks.ft.firstDone))}</span>` : ''}` : ''}</div></div>`
+      // the child shown: name, star goal, PIN; adding a further child, removing one
+      + `<div class="card"><h3>👧 ${kid}</h3><label>${T('The child’s name')}<input id="s-name" maxlength="30" value="${esc(ks.child || '')}"></label>`
+      + `<label>${T('Star goal per week')}<input id="s-goal" type="number" min="0" max="200" value="${esc(ks.goal || 0)}"></label>`
+      + `<label>${T('New PIN for {0} (4 digits; opens the child’s screen)', kid)}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<p class="muted small">${ks.cpin ? '🔒 ' + T('The child’s screen asks for the PIN for {0}.', kid) : T('No PIN for {0}: the child’s screen opens without one.', kid)}</p>`
+      + `<div class="row"><button class="btn" id="s-kid-save">${T('Save')}</button>${ks.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the PIN for {0}', kid)}</button>` : ''}${K() !== 'child' ? `<button class="btn ghost danger" id="s-kid-del">${T('Remove {0}', kid)}</button>` : ''}</div>`
+      + `<div class="row"><input id="s-newkid" maxlength="30" placeholder="${T('The new child’s name')}"><button class="btn ghost" id="s-kid-add">＋ ${T('Add a child')}</button></div></div>`
+      + `<div class="card"><h3>👨‍👩‍👧 ${T('Family')}</h3>`
       + `<label>${T('Mother’s name')}<input id="s-mom" maxlength="30" value="${esc(s.mom || '')}"></label>`
       + `<label>${T('Father’s name')}<input id="s-dad" maxlength="30" value="${esc(s.dad || '')}"></label>`
-      + `<label>${T('Star goal per week')}<input id="s-goal" type="number" min="0" max="200" value="${esc(s.goal || 0)}"></label>`
       // each parent changes only their own PIN (and sets the other's only while it is not set yet)
       + (me === 'mom' || !s.pin ? `<label>${T('New PIN for {0} (4 digits)', mom)}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>` : `<p class="muted small">🔒 ${T('Only {0} can change their own PIN.', mom)}</p>`)
       + (me === 'dad' || !s.pin2 ? `<label>${T('New PIN for {0} (4 digits)', dad)}<input id="s-pin2" inputmode="numeric" maxlength="8" placeholder="••••"></label>` : `<p class="muted small">🔒 ${T('Only {0} can change their own PIN.', dad)}</p>`)
       + `<p class="muted small">${s.pin2 ? '👩 👨 ' + T('{0} and {1} each have their own PIN.', mom, dad) : T('No PIN for {0} yet: only the PIN for {1} opens the parent screen.', dad, mom)}</p>`
-      + `<label>${T('New PIN for {0} (4 digits; opens the child’s screen)', kid)}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
-      + `<p class="muted small">${s.cpin ? '🔒 ' + T('The child’s screen asks for the PIN for {0}.', kid) : T('No PIN for {0}: the child’s screen opens without one.', kid)}</p>`
-      + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button>${s.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the PIN for {0}', kid)}</button>` : ''}</div></div>`
+      + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button></div></div>`
       + `<div class="card"><h3>🔑 ${T('Family password')}</h3><p class="muted">${s.gate ? T('A new device opens Dagsplan with the family password only.') : T('No family password yet: set one, so a new device can open Dagsplan with it.')}</p>`
       + `<label>${T('New family password (at least 6 letters)')}<input id="s-gpw" type="password" autocomplete="new-password" autocapitalize="off"></label><button class="btn" id="s-gpw-save">${T('Save')}</button></div>`
       // the relay address stays in the family's data, so it is never in the public code
@@ -96,7 +115,8 @@ const Parent = (() => {
       + `<input readonly value="${esc(childLink())}" id="s-link"><div class="row"><button class="btn" id="s-copy">${T('Copy')}</button>${navigator.share ? `<button class="btn ghost" id="s-share">${T('Share')}</button>` : ''}<a class="btn ghost" href="#child">${T('Open the child’s screen here')}</a></div>`
       + (Store.cloud ? '' : `<p class="warn">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`) + '</div>'
       + `<div class="card"><h3>💻 ${T('This device')}</h3><label>${T('When Dagsplan opens on this device, show')}<select id="s-home">`
-      + `<option value="parent"${App.home === 'parent' ? ' selected' : ''}>👨‍👩‍👧 ${T('the parent screen (asks the PIN)')}</option><option value="child"${App.home === 'child' ? ' selected' : ''}>👧 ${T('the child’s screen')}</option></select></label></div>`
+      + `<option value="parent"${App.home === 'parent' ? ' selected' : ''}>👨‍👩‍👧 ${T('the parent screen (asks the PIN)')}</option><option value="child"${App.home === 'child' ? ' selected' : ''}>👧 ${T('the child’s screen')}</option></select></label>`
+      + (many ? `<label>${T('The child’s screen on this device is for')}<select id="s-devkid">${kids().map(k => `<option value="${esc(k.id)}"${App.kid === k.id ? ' selected' : ''}>👧 ${esc(k.name || T('the child'))}</option>`).join('')}</select></label>` : '') + '</div>'
       + `<div class="card"><h3>🔔 ${T('About reminders')}</h3><p class="muted">${T('Reminders are sure when the child’s screen is open (a tablet on the wall with the screen kept on is best). With the app in the background a notification is shown, sometimes a little late. When the app is closed, a web app cannot ring: that needs the Android app version later.')}</p></div>`
       + `<div class="card"><button class="btn ghost" id="s-leave">${T('Leave this family on this device')}</button></div>`;
   }
@@ -112,13 +132,15 @@ const Parent = (() => {
 
   /* ---- the activity editor ---- */
   function edAct(id, day) {
-    const a = id ? { ...(D().acts || {})[id] } : { title: '', emoji: '⭐', cat: 'home', date: st.day, start: '', end: '', repeat: 'none', days: String(weekday(st.day)), remind: 'sound', before: 0, stars: 1 };
+    const a = id ? { ...(D().acts || {})[id] } : { kid: kids().length > 1 ? K() : '', title: '', emoji: '⭐', cat: 'home', date: st.day, start: '', end: '', repeat: 'none', days: String(weekday(st.day)), remind: 'sound', before: 0, stars: 1 };
     st.ed = { id, day: day || st.day, a };
     renderEd();
   }
   function renderEd() {
     const { a, id } = st.ed, lists = Object.entries(D().lists || {});
     $('#ov').innerHTML = `<div class="ed"><div class="ed-h"><h2>${id ? T('Edit activity') : T('New activity')}</h2><button class="x" data-ed="close" aria-label="${T('Close')}">✕</button></div>`
+      // with several children: for every child, or only one
+      + (kids().length > 1 ? `<div class="lbl">${T('For whom?')}</div><div class="seg wrap"><button data-forkid="" class="${!a.kid ? 'on' : ''}">👨‍👩‍👧 ${T('Every child')}</button>${kids().map(k => `<button data-forkid="${esc(k.id)}" class="${a.kid === k.id ? 'on' : ''}">👧 ${esc(k.name || T('the child'))}</button>`).join('')}</div>` : '')
       + `<label>${T('What?')}<input id="e-title" maxlength="50" value="${esc(a.title)}" placeholder="${T('e.g. Swimming')}"></label>`
       + `<div class="lbl">${T('Picture')}</div><div class="row">${pic(a, 'lg')}<button class="btn ghost" data-pick="act">😀 ${T('Choose emoji')}</button><label class="btn ghost file">📷 ${T('Photo')}<input type="file" accept="image/*" id="e-img" hidden></label>${a.img ? `<button class="btn ghost" data-ed="noimg">${T('Remove photo')}</button>` : ''}</div>`
       + `<div class="lbl">${T('Category')}</div><div class="cats">${Object.entries(CATS).map(([k, c]) => `<button data-cat="${k}" class="${a.cat === k ? 'on' : ''}" style="--c:${c.c}">${c.e} ${T(c.n)}</button>`).join('')}</div>`
@@ -204,6 +226,10 @@ const Parent = (() => {
     const b = e.target.closest('button'); if (!b) return;
     const ds = b.dataset;
     if (ds.ptab) { st.tab = ds.ptab; render(); return; }
+    if (ds.kid) { st.kid = ds.kid; render(); return; }
+    if (ds.forkid !== undefined) { grab(); st.ed.a.kid = ds.forkid; renderEd(); return; }
+    // the child's screen here shows the child chosen above
+    if (ds.childscreen) { App.kid = K(); location.hash = '#child'; return; }
     if (ds.view) { st.view = ds.view; render(); return; }
     if (ds.nav) { const k = ds.nav === 'day' ? 'day' : 'logDay'; st[k] = +ds.n ? addDays(st[k], +ds.n) : today(); render(); return; }
     if (ds.new === 'act') { edAct(null); return; }
@@ -232,22 +258,37 @@ const Parent = (() => {
       case 'ldel': if (confirm(T('Delete “{0}”?', st.led.l.title))) { Store.remove('lists/' + st.led.id); closeEd(); } return;
     }
     switch (b.id) {
-      case 'msg-send': { const t = $('#msg-t').value.trim(); if (!t) { toast(T('Write the message')); return; } Store.set('settings/msg', { id: rid(6), text: t, emoji: st.msgE || '💬', ts: Date.now(), from: App.whoName() }); $('#msg-t').value = ''; toast(T('Sent')); return; }
-      case 'ft-save': { const a = $('#ft1-t').value.trim(), c = $('#ft2-t').value.trim(), f = S().ft || { first: {}, then: {} }; if (!a || !c) { toast(T('Write both parts')); return; } Store.set('settings/ft', { first: { emoji: st.ft1 || f.first.emoji || '📚', text: a }, then: { emoji: st.ft2 || f.then.emoji || '🎮', text: c } }); st.ft1 = st.ft2 = null; toast(T('Saved')); return; }
-      case 'ft-clear': Store.remove('settings/ft'); return;
+      case 'msg-send': { const t = $('#msg-t').value.trim(); if (!t) { toast(T('Write the message')); return; } Store.set(kidBase(K()) + '/msg', { id: rid(6), text: t, emoji: st.msgE || '💬', ts: Date.now(), from: App.whoName() }); $('#msg-t').value = ''; toast(T('Sent')); return; }
+      case 'ft-save': { const a = $('#ft1-t').value.trim(), c = $('#ft2-t').value.trim(), f = KS().ft || { first: {}, then: {} }; if (!a || !c) { toast(T('Write both parts')); return; } Store.set(kidBase(K()) + '/ft', { first: { emoji: st.ft1 || f.first.emoji || '📚', text: a }, then: { emoji: st.ft2 || f.then.emoji || '🎮', text: c } }); st.ft1 = st.ft2 = null; toast(T('Saved')); return; }
+      case 'ft-clear': Store.remove(kidBase(K()) + '/ft'); return;
       case 's-save': {
         const val = id => ($(id) ? $(id).value.trim() : '');
-        const pin = val('#s-pin'), pin2 = val('#s-pin2'), cpin = val('#s-cpin'), up = { child: $('#s-name').value.trim(), mom: $('#s-mom').value.trim(), dad: $('#s-dad').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
-        const bad = App.pinsBad(pin, pin2, cpin); if (bad) { toast(bad); return; }
+        const pin = val('#s-pin'), pin2 = val('#s-pin2'), up = { mom: $('#s-mom').value.trim(), dad: $('#s-dad').value.trim() };
+        const bad = App.pinsBad(pin, pin2); if (bad) { toast(bad); return; }
         if (pin) up.pin = await pinHash(Store.code, pin);
         if (pin2) up.pin2 = await pinHash(Store.code, pin2);
-        if (cpin) up.cpin = await pinHash(Store.code, cpin);
-        // a new PIN may not be the same as one of the PINs kept
-        const all = ['pin', 'pin2', 'cpin'].map(k => up[k] || S()[k]).filter(Boolean);
-        if (new Set(all).size < all.length) { toast(T('The PINs must all be different')); return; }
-        Store.update('settings', up); for (const i of ['#s-pin', '#s-pin2', '#s-cpin']) if ($(i)) $(i).value = ''; toast(T('Saved')); return;
+        if (!pinsApart(up)) { toast(T('The PINs must all be different')); return; }
+        Store.update('settings', up); for (const i of ['#s-pin', '#s-pin2']) if ($(i)) $(i).value = ''; toast(T('Saved')); return;
       }
-      case 's-cpin-off': Store.remove('settings/cpin'); toast(T('Saved')); return;
+      case 's-kid-save': {
+        const cpin = $('#s-cpin').value.trim(), up = { goal: Math.max(0, +$('#s-goal').value || 0) };
+        up[K() === 'child' ? 'child' : 'name'] = $('#s-name').value.trim();
+        const bad = App.pinsBad(cpin); if (bad) { toast(bad); return; }
+        if (cpin) up.cpin = await pinHash(Store.code, cpin);
+        if (!pinsApart({ ['cpin:' + K()]: up.cpin })) { toast(T('The PINs must all be different')); return; }
+        Store.update(kidBase(K()), up); $('#s-cpin').value = ''; toast(T('Saved')); return;
+      }
+      case 's-cpin-off': Store.remove(kidBase(K()) + '/cpin'); toast(T('Saved')); return;
+      case 's-kid-add': {
+        const name = $('#s-newkid').value.trim(); if (!name) { toast(T('Write the child’s name')); return; }
+        const id = 'k' + rid(6); Store.set('settings/kids/' + id, { name, goal: 20 }); st.kid = id; $('#s-newkid').value = ''; toast(T('Saved')); render(); return;
+      }
+      case 's-kid-del': {
+        // a further child goes with their own activities and ticks; the first child stays
+        const k = K(); if (k === 'child' || !confirm(T('Remove {0}? Their own activities and ticks are deleted too.', kidName(k)))) return;
+        for (const [id, a] of Object.entries(Store.data.acts || {})) if (a && a.kid === k) Store.remove('acts/' + id);
+        Store.remove('klog/' + k); Store.remove('settings/kids/' + k); st.kid = 'child'; if (App.kid === k) App.kid = 'child'; render(); return;
+      }
       case 's-turn-save': {
         // checks the address gives relay servers before keeping it
         const u = $('#s-turn').value.trim();
@@ -278,6 +319,7 @@ const Parent = (() => {
     const t = e.target;
     if (t.id === 'p-lang') { setLang(t.value); render(); return; }
     if (t.id === 's-home') { App.home = t.value; toast(T('Saved')); return; }
+    if (t.id === 's-devkid') { App.kid = t.value; toast(T('Saved')); return; }
     if (t.id === 'e-img' && t.files[0]) { grab(); try { st.ed.a.img = await shrinkImage(t.files[0]); } catch (x) { toast(T('The picture could not be read')); } renderEd(); return; }
     if (t.dataset.itimg && t.files[0]) { grabL(); try { st.led.l.items[+t.dataset.itimg].img = await shrinkImage(t.files[0], 200); } catch (x) { toast(T('The picture could not be read')); } renderLed(); return; }
     if (t.id === 'e-date' && st.ed && st.ed.a.repeat === 'weekly' && !st.ed.id) { grab(); st.ed.a.days = String(weekday(t.value)); renderEd(); }
