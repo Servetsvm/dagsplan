@@ -67,20 +67,24 @@ const Parent = (() => {
   function childLink() { return location.href.split('#')[0] + '#child?k=' + Store.code; }
   function settingsHtml() {
     const s = S(), f = s.ft || { first: {}, then: {} };
+    // the family's names where they were given
+    const mom = esc(s.mom || T('the mother')), dad = esc(s.dad || T('the father')), kid = esc(s.child || T('the child'));
     return `<div class="card"><h3>💬 ${T('Send a message to the screen now')}</h3><p class="muted">${T('It shows full screen on the child’s screen with a sound, until they press Done.')}</p>`
       + `<div class="row"><button class="emo-btn" data-pick="msg-e">${esc(st.msgE || '💬')}</button><input id="msg-t" maxlength="80" placeholder="${T('e.g. Time to come home for dinner')}"><button class="btn" id="msg-send">${T('Send')}</button></div></div>`
       + `<div class="card"><h3>➜ ${T('First – then')}</h3><p class="muted">${T('Two big cards on the child’s screen: first this, then that.')}</p>`
       + `<div class="row"><b class="lbl">${T('First')}</b><button class="emo-btn" data-pick="ft1">${esc(st.ft1 || f.first.emoji || '📚')}</button><input id="ft1-t" maxlength="40" value="${esc(f.first.text || '')}" placeholder="${T('e.g. Homework')}"></div>`
       + `<div class="row"><b class="lbl">${T('Then')}</b><button class="emo-btn" data-pick="ft2">${esc(st.ft2 || f.then.emoji || '🎮')}</button><input id="ft2-t" maxlength="40" value="${esc(f.then.text || '')}" placeholder="${T('e.g. 30 min gaming')}"></div>`
       + `<div class="row"><button class="btn" id="ft-save">${T('Show on the screen')}</button>${s.ft ? `<button class="btn ghost" id="ft-clear">${T('Remove')}</button>${s.ft.firstDone ? `<span class="ok">✓ ${T('First part done {0}', clockOf(s.ft.firstDone))}</span>` : ''}` : ''}</div></div>`
-      + `<div class="card"><h3>👧 ${T('Child')}</h3><label>${T('Name')}<input id="s-name" maxlength="30" value="${esc(s.child || '')}"></label>`
+      + `<div class="card"><h3>👨‍👩‍👧 ${T('Family')}</h3><label>${T('The child’s name')}<input id="s-name" maxlength="30" value="${esc(s.child || '')}"></label>`
+      + `<label>${T('Mother’s name')}<input id="s-mom" maxlength="30" value="${esc(s.mom || '')}"></label>`
+      + `<label>${T('Father’s name')}<input id="s-dad" maxlength="30" value="${esc(s.dad || '')}"></label>`
       + `<label>${T('Star goal per week')}<input id="s-goal" type="number" min="0" max="200" value="${esc(s.goal || 0)}"></label>`
-      + `<label>${T('New mother’s PIN (4 digits)')}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
-      + `<label>${T('New father’s PIN (4 digits)')}<input id="s-pin2" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
-      + `<p class="muted small">${s.pin2 ? '👩 👨 ' + T('The mother and the father each have their own PIN.') : T('No father’s PIN yet: only the mother’s PIN opens the parent screen.')}</p>`
-      + `<label>${T('New child PIN (4 digits; opens the child’s screen)')}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
-      + `<p class="muted small">${s.cpin ? '🔒 ' + T('The child’s screen asks for the child PIN.') : T('No child PIN: the child’s screen opens without one.')}</p>`
-      + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button>${s.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the child PIN')}</button>` : ''}</div></div>`
+      + `<label>${T('New PIN for {0} (4 digits)', mom)}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<label>${T('New PIN for {0} (4 digits)', dad)}<input id="s-pin2" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<p class="muted small">${s.pin2 ? '👩 👨 ' + T('{0} and {1} each have their own PIN.', mom, dad) : T('No PIN for {0} yet: only the PIN for {1} opens the parent screen.', dad, mom)}</p>`
+      + `<label>${T('New PIN for {0} (4 digits; opens the child’s screen)', kid)}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<p class="muted small">${s.cpin ? '🔒 ' + T('The child’s screen asks for the PIN for {0}.', kid) : T('No PIN for {0}: the child’s screen opens without one.', kid)}</p>`
+      + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button>${s.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the PIN for {0}', kid)}</button>` : ''}</div></div>`
       + `<div class="card"><h3>📱 ${T('The child’s screen')}</h3><p class="muted">${T('Open this link on the child’s tablet, phone or PC, then “Add to Home screen”.')} ${T('Another parent opens the same link and presses 🔒 Parent.')}</p>`
       + `<input readonly value="${esc(childLink())}" id="s-link"><div class="row"><button class="btn" id="s-copy">${T('Copy')}</button>${navigator.share ? `<button class="btn ghost" id="s-share">${T('Share')}</button>` : ''}<a class="btn ghost" href="#child">${T('Open the child’s screen here')}</a></div>`
       + (Store.cloud ? '' : `<p class="warn">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`) + '</div>'
@@ -223,7 +227,7 @@ const Parent = (() => {
       case 'ft-save': { const a = $('#ft1-t').value.trim(), c = $('#ft2-t').value.trim(), f = S().ft || { first: {}, then: {} }; if (!a || !c) { toast(T('Write both parts')); return; } Store.set('settings/ft', { first: { emoji: st.ft1 || f.first.emoji || '📚', text: a }, then: { emoji: st.ft2 || f.then.emoji || '🎮', text: c } }); st.ft1 = st.ft2 = null; toast(T('Saved')); return; }
       case 'ft-clear': Store.remove('settings/ft'); return;
       case 's-save': {
-        const pin = $('#s-pin').value.trim(), pin2 = $('#s-pin2').value.trim(), cpin = $('#s-cpin').value.trim(), up = { child: $('#s-name').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
+        const pin = $('#s-pin').value.trim(), pin2 = $('#s-pin2').value.trim(), cpin = $('#s-cpin').value.trim(), up = { child: $('#s-name').value.trim(), mom: $('#s-mom').value.trim(), dad: $('#s-dad').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
         const bad = App.pinsBad(pin, pin2, cpin); if (bad) { toast(bad); return; }
         if (pin) up.pin = await pinHash(Store.code, pin);
         if (pin2) up.pin2 = await pinHash(Store.code, pin2);

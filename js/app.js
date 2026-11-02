@@ -42,7 +42,9 @@ const App = (() => {
     let h = `<div class="su"><div class="logo">🗓️</div><h1>Dagsplan</h1><p class="muted">${T('A visual day plan with reminders, for the child’s screen and the parent’s phone.')}</p>${langRow()}`;
     if (step === 'start') h += `<button class="btn big" data-su="new">👨‍👩‍👧 ${T('I am a parent: make a new plan')}</button><p class="muted small">${T('Joining a plan? Open the link from the parent’s Settings.')}</p>`;
     else if (step === 'new') h += `<label>${T('The child’s name')}<input id="su-name" maxlength="30" autocomplete="off"></label>`
+      + `<label>${T('Mother’s name')}<input id="su-mom" maxlength="30" autocomplete="off"></label>`
       + `<label>${T('Mother’s PIN (4 digits; opens the parent screen)')}<input id="su-pin" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
+      + `<label>${T('Father’s name (optional)')}<input id="su-dad" maxlength="30" autocomplete="off"></label>`
       + `<label>${T('Father’s PIN (optional, 4 digits; opens the parent screen)')}<input id="su-pin2" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
       + `<label>${T('Child PIN (optional, 4 digits; opens the child’s screen)')}<input id="su-cpin" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
       + `<label class="chk"><input type="checkbox" id="su-ex" checked> ${T('Start with examples (morning, school, swimming)')}</label>`
@@ -61,12 +63,15 @@ const App = (() => {
       const name = $('#su-name').value.trim(), pin = $('#su-pin').value.trim(), pin2 = $('#su-pin2').value.trim(), cpin = $('#su-cpin').value.trim();
       if (!name) { setup('new', T('Write the child’s name')); return; }
       const bad = pinsBad(pin, pin2, cpin) || (pin ? '' : T('The PIN must be 4–8 digits'));
-      if (bad) { setup('new', bad); $('#su-name').value = name; return; }
+      if (bad) { const m = $('#su-mom').value, f = $('#su-dad').value; setup('new', bad); $('#su-name').value = name; $('#su-mom').value = m; $('#su-dad').value = f; return; }
       const code = rid(12), ex = $('#su-ex').checked;
       b.disabled = true;
       put('dp-code', code); put('dp-parent-' + code, '1');
       Store.open(code);
       const set = { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now() };
+      const mom = $('#su-mom').value.trim(), dad = $('#su-dad').value.trim();
+      if (mom) set.mom = mom;
+      if (dad) set.dad = dad;
       if (pin2) set.pin2 = await pinHash(code, pin2);
       if (cpin) set.cpin = await pinHash(code, cpin);
       Store.set('settings', set);
@@ -86,12 +91,15 @@ const App = (() => {
 
   /* ---- the PIN pad (resolves true when one of the right PINs is typed). For the child's lock (kind 'child') it takes
      the child's PIN or a parent's; a parent's PIN opens both screens. ---- */
-  function askPin(code = Store.code, hash = parentPins(Store.data.settings), kind = 'parent', parentHash = []) {
+  function askPin(code = Store.code, hash = parentPins(Store.data.settings), kind = 'parent', parentHash = [], set = Store.data.settings) {
     const own = [].concat(hash || []).filter(Boolean), par = [].concat(parentHash || []).filter(Boolean);
+    // the pad names whose PIN it wants, when the names were given
+    const s = set || {}, names = kind === 'child' ? [s.child] : [s.mom, s.dad], who = names.filter(Boolean).join(' / ');
+    const title = who ? T('PIN for {0}', who) : T(kind === 'child' ? 'Child PIN' : 'Parent PIN');
     return new Promise(done => {
       if (!own.length) { done(true); return; }
       const p = document.createElement('div'); p.className = 'pinpad'; let v = '';
-      const draw = (bad) => { p.innerHTML = `<div class="pp-in${bad ? ' bad' : ''}"><h2>${T(kind === 'child' ? 'Child PIN' : 'Parent PIN')}</h2><div class="pp-dots">${'●'.repeat(v.length) || '&nbsp;'}</div><div class="pp-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '✕', 0, '⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('')}</div><button class="link" data-k="ok">${T('OK')}</button></div>`; };
+      const draw = (bad) => { p.innerHTML = `<div class="pp-in${bad ? ' bad' : ''}"><h2>${esc(title)}</h2><div class="pp-dots">${'●'.repeat(v.length) || '&nbsp;'}</div><div class="pp-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '✕', 0, '⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('')}</div><button class="link" data-k="ok">${T('OK')}</button></div>`; };
       const finish = r => { p.remove(); done(r); };
       p.addEventListener('click', async e => {
         const b = e.target.closest('button'); if (!b) return; const k = b.dataset.k;
@@ -126,14 +134,14 @@ const App = (() => {
     if (r === 'parent') {
       if (!parentOk(code)) {
         // the PIN from the database when this device has not got the plan yet
-        let h = parentPins(Store.data.settings); if (!h.length) try { h = parentPins(await Store.fetchSettings(code)); } catch (e) {}
-        if (!(await askPin(code, h))) { location.hash = '#child'; return; }
+        let s = Store.data.settings; if (!parentPins(s).length) try { s = await Store.fetchSettings(code); } catch (e) {}
+        if (!(await askPin(code, parentPins(s), 'parent', [], s))) { location.hash = '#child'; return; }
       }
       put('dp-role', 'parent'); cur = Parent;
     } else if (r === 'child') {
       if (!childOk(code)) {
         let s = Store.data.settings; if (!s) try { s = await Store.fetchSettings(code); } catch (e) {}
-        if (s && s.cpin && !(await askPin(code, s.cpin, 'child', parentPins(s)))) { locked(); return; }
+        if (s && s.cpin && !(await askPin(code, s.cpin, 'child', parentPins(s), s))) { locked(); return; }
       }
       // the child's screen locks the parent's: back to the parent screen only with the parent PIN
       sessionStorage.setItem('dp-child-' + code, '1'); sessionStorage.removeItem('dp-parent-' + code); put('dp-parent-' + code, null);
