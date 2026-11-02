@@ -75,6 +75,8 @@ h1 { margin: 6px 0; }
 .c-stars { font-size: 20px; font-weight: 700; min-width: 90px; }
 .c-lang { border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; color: var(--muted); text-decoration: none; }
 .c-btns { display: flex; gap: 6px; }
+.c-acts { display: flex; align-items: center; gap: 6px; }
+.c-lang { white-space: nowrap; }
 .c-call, .p-call { font-size: 22px; width: 46px; height: 46px; border-radius: 50%; background: var(--card); border: 1.5px solid var(--line); box-shadow: var(--shadow); }
 .p-call { font-size: 18px; width: 38px; height: 38px; flex: none; }
 
@@ -314,4 +316,51 @@ h1 { margin: 6px 0; }
   .wk-h { text-align: left; font-size: 16px; }
   .wk-it { font-size: 15px; padding: 6px; }
   .p-tabs button { font-size: 13px; }
+  /* the child's screen on a phone: smaller head, rows and tab bar, so the day fits without much scrolling */
+  .child { padding: 0 10px; }
+  .c-top { padding: 8px 0 4px; gap: 8px; align-items: flex-start; }
+  .c-clock { gap: 8px; }
+  .c-part { font-size: 14px; }
+  .c-right { gap: 4px; }
+  .c-call { width: 38px; height: 38px; font-size: 18px; }
+  .c-lang { padding: 3px 9px; font-size: 13px; min-height: 38px; display: inline-flex; align-items: center; }
+  /* the four buttons in one row; the lock without its word */
+  .c-acts { flex-direction: row; gap: 6px; }
+  .c-lock span { display: none; }
+  .c-name { font-size: 16px; }
+  .now { margin: 4px 0 8px; gap: 6px; }
+  .now-card { padding: 8px 10px; gap: 10px; border-left-width: 7px; }
+  .now-card svg { width: 58px; height: 58px; flex: none; }
+  .timeline { gap: 5px; }
+  .tl-item { min-height: 54px; padding: 6px 10px; gap: 10px; border-left-width: 7px; }
+  .tl-title { font-size: 17px; }
+  .tl-title small { font-size: 13px; }
+  .c-main { padding-bottom: 76px; }
+  .c-nav { padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); }
+  .c-nav button { padding: 3px; font-size: 13px; }
+  .c-nav button span { font-size: 22px; }
 }
+/* a short screen (a phone held sideways, a small phone): the clock and the head shrink more */
+@media (max-height: 700px) {
+  .aclock { width: 54px; height: 54px; }
+  .c-time { font-size: 30px; }
+  .tl-item { min-height: 48px; }
+}
+/* a wide screen (a PC, a tablet held sideways): "now / next" on the left, the day beside it; a lower head and tab bar */
+@media (min-width: 900px) {
+  .c-main:has(> .now) { display: grid; grid-template-columns: minmax(280px, 1fr) 2fr; gap: 18px; align-items: start; }
+  .c-main > .now { grid-template-columns: 1fr; position: sticky; top: 10px; margin: 0; }
+  .c-main > .timeline { min-width: 0; }
+}
+@media (min-width: 900px) and (max-height: 820px) {
+  .c-top { padding: 8px 0 6px; }
+  .aclock { width: 66px; height: 66px; }
+  .c-time { font-size: 36px; }
+  .tl-item { min-height: 58px; padding: 6px 14px; }
+  .tl-title { font-size: 19px; }
+  .c-nav { padding: 4px 12px calc(4px + env(safe-area-inset-bottom)); }
+  .c-nav button { padding: 3px; flex-direction: row; justify-content: center; gap: 8px; }
+  .c-nav button span { font-size: 22px; }
+  .c-main { padding-bottom: 64px; }
+}
+.tl-past { width: 100%; text-align: left; padding: 8px 12px; border-radius: var(--r); background: var(--card); color: var(--muted); font-weight: 600; box-shadow: var(--shadow); }

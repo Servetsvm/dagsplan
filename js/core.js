@@ -27,6 +27,18 @@ const dateShort = s => parseYmd(s).toLocaleDateString(LOCALE(), { day: 'numeric'
 // a random id without look-alike letters (family codes are read aloud and typed)
 function rid(n = 10) { const A = 'abcdefghjkmnpqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(n)); let r = ''; for (const x of b) r += A[x % A.length]; return r; }
 async function sha(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+/* the example activities and lists are stored in the language the plan was made in; their names (and a note) show in
+   the screen's language. Only these texts are translated: what a parent writes stays as written. */
+const EXAMPLE_TEXTS = ['Morning routine', 'School bag', 'Swimming bag', 'Brush your teeth', 'Get dressed', 'Eat breakfast', 'Take your medicine',
+  'Books', 'Pencil case', 'Packed lunch', 'Laptop', 'Water bottle', 'Swimsuit', 'Goggles', 'Shampoo', 'Towel', 'Get up', 'Breakfast',
+  'Pack the school bag', 'School', 'Homework', 'Swimming', 'Dinner', 'Screen off', 'Bedtime', 'Check the list before you go'];
+let txMap = null;
+function tx(s) {
+  if (!s) return s;
+  if (!txMap) { txMap = {}; for (const k of EXAMPLE_TEXTS) { txMap[k] = k; for (const L of Object.values(I18N)) if (L[k]) txMap[L[k]] = k; } }
+  const k = txMap[String(s).trim()];
+  return k ? T(k) : s;
+}
 const pinHash = (code, pin) => sha('dagsplan:' + code + ':' + pin);
 // the family password's key (not case-sensitive, so a phone's capital first letter does not matter)
 const gateHash = pw => sha('dagsplan-gate:' + String(pw).trim().toLowerCase());

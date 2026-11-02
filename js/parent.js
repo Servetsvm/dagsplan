@@ -42,7 +42,7 @@ const Parent = (() => {
     if (st.view === 'week') h += weekHtml(D(), mondayOf(d), true);
     else {
       const acts = dayActs(D(), d);
-      h += acts.length ? '<div class="plist">' + acts.map(a => `<button class="prow" data-edit="${a.id}" data-day="${d}" style="--c:${catOf(a).c}"><span class="pt">${a.start}${a.end ? '–' + a.end : ''}</span>${pic(a, 'sm')}<span class="pn"><b>${esc(a.title)}</b>`
+      h += acts.length ? '<div class="plist">' + acts.map(a => `<button class="prow" data-edit="${a.id}" data-day="${d}" style="--c:${catOf(a).c}"><span class="pt">${a.start}${a.end ? '–' + a.end : ''}</span>${pic(a, 'sm')}<span class="pn"><b>${esc(tx(a.title))}</b>`
         + `<small>${a.repeat && a.repeat !== 'none' ? '🔁 ' : ''}${REM[a.remind] ? REM[a.remind][0] : ''}${a.before ? ' −' + a.before + 'm' : ''}${a.audio ? ' 🎤' : ''}${a.note ? ' 📝' : ''}${a.video ? ' 🎬' : ''}${a.list ? ' ☑' : ''} ${statusTxt(a, d)}</small></span></button>`).join('') + '</div>'
         : `<div class="empty">${T('Nothing planned this day')}</div>`;
     }
@@ -50,7 +50,7 @@ const Parent = (() => {
   }
   function listsHtml() {
     const ls = Object.entries(D().lists || {});
-    return (ls.length ? '<div class="plist">' + ls.map(([id, l]) => `<button class="prow" data-ledit="${id}">${pic(l, 'sm')}<span class="pn"><b>${esc(l.title)}</b><small>${itemsOf(l).map(i => esc(i.emoji || '•')).join(' ')}</small></span></button>`).join('') + '</div>'
+    return (ls.length ? '<div class="plist">' + ls.map(([id, l]) => `<button class="prow" data-ledit="${id}">${pic(l, 'sm')}<span class="pn"><b>${esc(tx(l.title))}</b><small>${itemsOf(l).map(i => esc(i.emoji || '•')).join(' ')}</small></span></button>`).join('') + '</div>'
       : `<div class="empty">${T('No checklists yet')}</div>`) + `<button class="btn-add" data-new="list">＋ ${T('New checklist')}</button>`;
   }
   function logHtml() {
@@ -58,14 +58,14 @@ const Parent = (() => {
     let h = dayNav('log', d) + `<div class="card stars"><b>⭐ ${T('{0} stars this week', stars)}</b>${goal ? ` <span>${T('goal {0}', goal)}</span><div class="bar"><i style="width:${Math.min(100, stars / goal * 100)}%"></i></div>` : ''}</div>`;
     h += acts.length ? acts.map(a => {
       const it = itemsOf(listOf(D(), a.list)), tk = logOf(D(), d, a.id).ticks || {};
-      return `<div class="card lrow" style="--c:${catOf(a).c}"><div class="lr-h">${pic(a, 'sm')}<b>${a.start} ${esc(a.title)}</b></div><div class="lr-s">${statusTxt(a, d) || T('Waiting')}</div>`
-        + (it.length ? '<div class="lr-items">' + it.map(i => `<span class="${tk[i.id] ? 'ok' : 'no'}">${tk[i.id] ? '✓' : '○'} ${esc(i.emoji || '')} ${esc(i.text)}${tk[i.id] ? ' <small>' + clockOf(tk[i.id]) + '</small>' : ''}</span>`).join('') + '</div>' : '') + '</div>';
+      return `<div class="card lrow" style="--c:${catOf(a).c}"><div class="lr-h">${pic(a, 'sm')}<b>${a.start} ${esc(tx(a.title))}</b></div><div class="lr-s">${statusTxt(a, d) || T('Waiting')}</div>`
+        + (it.length ? '<div class="lr-items">' + it.map(i => `<span class="${tk[i.id] ? 'ok' : 'no'}">${tk[i.id] ? '✓' : '○'} ${esc(i.emoji || '')} ${esc(tx(i.text))}${tk[i.id] ? ' <small>' + clockOf(tk[i.id]) + '</small>' : ''}</span>`).join('') + '</div>' : '') + '</div>';
     }).join('') : `<div class="empty">${T('Nothing planned this day')}</div>`;
     // checklists the child opened from the Lists tab on their own
     for (const [k, e] of Object.entries(L)) {
       if (!k.startsWith('l_')) continue; const l = listOf(D(), k.slice(2)); if (!l) continue;
       const it = itemsOf(l), tk = e.ticks || {};
-      h += `<div class="card lrow"><div class="lr-h">${pic(l, 'sm')}<b>${esc(l.title)}</b></div><div class="lr-s">${e.done ? `<span class="ok">✓ ${T('Done at {0}', clockOf(e.done))}</span>` : `☑ ${it.filter(i => tk[i.id]).length}/${it.length}`}</div></div>`;
+      h += `<div class="card lrow"><div class="lr-h">${pic(l, 'sm')}<b>${esc(tx(l.title))}</b></div><div class="lr-s">${e.done ? `<span class="ok">✓ ${T('Done at {0}', clockOf(e.done))}</span>` : `☑ ${it.filter(i => tk[i.id]).length}/${it.length}`}</div></div>`;
     }
     const m = KS().msg;
     if (m && m.ts && ymd(new Date(m.ts)) === d) h += `<div class="card">💬 ${esc(m.emoji || '')} ${esc(m.text)} · ${m.from ? esc(m.from) + ' · ' : ''}${T('sent {0}', clockOf(m.ts))} · ${m.seen ? `<span class="ok">${T('seen {0}', clockOf(m.seen))}</span>` : `<span class="no">${T('not seen yet')}</span>`}</div>`;

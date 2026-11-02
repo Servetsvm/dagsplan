@@ -30,11 +30,11 @@ const Child = (() => {
     let h = '';
     for (const a of cur) {
       const s = mins(a.start), e = mins(a.end), c = catOf(a).c;
-      h += `<button class="now-card" data-open="${a.id}" style="--c:${c}">${pie((e - n) / (e - s), c, 84)}<div class="nc-txt"><div class="nc-lbl">${T('Now')}</div><div class="nc-title">${pic(a, 'sm')} ${esc(a.title)}</div><div class="nc-left">${T('{0} left', dur(e - n))}</div></div></button>`;
+      h += `<button class="now-card" data-open="${a.id}" style="--c:${c}">${pie((e - n) / (e - s), c, 84)}<div class="nc-txt"><div class="nc-lbl">${T('Now')}</div><div class="nc-title">${pic(a, 'sm')} ${esc(tx(a.title))}</div><div class="nc-left">${T('{0} left', dur(e - n))}</div></div></button>`;
     }
     if (next) {
       const left = mins(next.start) - n, c = catOf(next).c;
-      h += `<button class="now-card next" data-open="${next.id}" style="--c:${c}">${pie(Math.min(left, 60) / 60, c, cur.length ? 56 : 84)}<div class="nc-txt"><div class="nc-lbl">${T('Next')}</div><div class="nc-title">${pic(next, 'sm')} ${esc(next.title)}</div><div class="nc-left">${T('in {0}', dur(left))} · ${next.start}</div></div></button>`;
+      h += `<button class="now-card next" data-open="${next.id}" style="--c:${c}">${pie(Math.min(left, 60) / 60, c, cur.length ? 56 : 84)}<div class="nc-txt"><div class="nc-lbl">${T('Next')}</div><div class="nc-title">${pic(next, 'sm')} ${esc(tx(next.title))}</div><div class="nc-left">${T('in {0}', dur(left))} · ${next.start}</div></div></button>`;
     }
     if (!h) h = `<div class="now-card done"><span class="big-emo">🌙</span><div class="nc-txt"><div class="nc-title">${acts.length ? T('No more activities today') : T('Nothing planned today')}</div></div></div>`;
     return h;
@@ -49,12 +49,17 @@ const Child = (() => {
     if (!acts.length) return `<div class="empty">${T('Nothing planned today')}</div>`;
     const d = today(); let h = '<div class="timeline">', lined = false;
     const line = () => `<div class="nowline"><span>${hm(n)}</span></div>`;
+    // what is over today folds into one line (opened with a tap), so the rest of the day fits the screen
+    const gone = acts.filter(a => (a.end ? mins(a.end) : mins(a.start) + 1) <= n);
+    const fold = gone.length > 1 && !st.showPast;
+    if (gone.length > 1) h += `<button class="tl-past" data-past="1">${st.showPast ? '▴' : '▾'} ${T('Earlier today ({0})', gone.length)}</button>`;
     for (const a of acts) {
       const s = mins(a.start), past = (a.end ? mins(a.end) : s + 1) <= n;
+      if (past && fold) continue;
       if (!lined && s > n) { h += line(); lined = true; }
       const L = itemsOf(listOf(D(), a.list)), ticks = logOf(D(), d, a.id).ticks || {};
       h += `<button class="tl-item${past ? ' past' : ''}${logOf(D(), d, a.id).done ? ' isdone' : ''}" data-open="${a.id}" style="--c:${catOf(a).c}">`
-        + `<div class="tl-time">${a.start}${a.end ? '<small>' + a.end + '</small>' : ''}</div>${pic(a)}<div class="tl-title">${esc(a.title)}`
+        + `<div class="tl-time">${a.start}${a.end ? '<small>' + a.end + '</small>' : ''}</div>${pic(a)}<div class="tl-title">${esc(tx(a.title))}`
         + `${L.length ? `<small>☑ ${L.filter(i => ticks[i.id]).length}/${L.length}</small>` : ''}</div>${statusIcon(a, d, n)}</button>`;
     }
     if (!lined) h += line();
@@ -66,7 +71,7 @@ const Child = (() => {
     const d = today();
     return '<div class="tiles">' + ls.map(([id, l]) => {
       const it = itemsOf(l), tk = logOf(D(), d, 'l_' + id).ticks || {}, n = it.filter(i => tk[i.id]).length;
-      return `<button class="tile" data-list="${id}">${pic(l, 'lg')}<b>${esc(l.title)}</b><small>${n}/${it.length}${n === it.length && it.length ? ' ✓' : ''}</small></button>`;
+      return `<button class="tile" data-list="${id}">${pic(l, 'lg')}<b>${esc(tx(l.title))}</b><small>${n}/${it.length}${n === it.length && it.length ? ' ✓' : ''}</small></button>`;
     }).join('') + '</div>';
   }
   function ftHtml() {
@@ -89,8 +94,8 @@ const Child = (() => {
     app.className = 'child';
     app.innerHTML = `<header class="c-top"><div class="c-clock" id="hold">${clockSvg()}<div><div class="c-time" id="c-time"></div><div class="c-date">${esc(dateLong(d))}</div><div class="c-part">${esc(dayPart(n))}</div></div></div>`
       + `<div class="c-right">${s.child ? `<div class="c-name">${esc(s.child)}</div>` : ''}<div class="c-stars">⭐ ${stars}${goal ? ' / ' + goal : ''}${goal ? `<div class="bar"><i style="width:${Math.min(100, stars / goal * 100)}%"></i></div>` : ''}</div>`
-      + `<div class="c-btns"><button class="c-call" data-call="video" title="${T('Video call')}" aria-label="${T('Video call')}">📹</button><button class="c-call" data-call="audio" title="${T('Voice call')}" aria-label="${T('Voice call')}">📞</button></div>`
-      + `<div class="c-btns"><a class="c-lang" href="#parent">🔒 ${T('Parent')}</a><button class="c-lang" id="c-lang" aria-label="Language">${LANG.toUpperCase()}</button></div></div></header>`
+      + `<div class="c-acts"><div class="c-btns"><button class="c-call" data-call="video" title="${T('Video call')}" aria-label="${T('Video call')}">📹</button><button class="c-call" data-call="audio" title="${T('Voice call')}" aria-label="${T('Voice call')}">📞</button></div>`
+      + `<div class="c-btns"><a class="c-lang c-lock" href="#parent" title="${T('Parent')}" aria-label="${T('Parent')}">🔒<span> ${T('Parent')}</span></a><button class="c-lang" id="c-lang" aria-label="Language">${LANG.toUpperCase()}</button></div></div></div></header>`
       + (Store.status === 'offline' ? `<div class="offline">${T('No connection — showing the last plan')}</div>` : '')
       + `<main class="c-main">${main}</main>`
       + `<nav class="c-nav">${tabs.map(([k, i, t]) => `<button data-tab="${k}" class="${st.tab === k ? 'on' : ''}"><span>${i}</span>${esc(t)}</button>`).join('')}</nav>`;
@@ -107,14 +112,14 @@ const Child = (() => {
     const key = openKey(), lg = logOf(D(), d, key), ticks = lg.ticks || {}, items = itemsOf(l), c = a ? catOf(a).c : '#0ea5e9', n = nowMin();
     let dyn = '';
     if (a && a.end && mins(a.start) <= n && n < mins(a.end)) dyn += `<div class="op-pie">${pie((mins(a.end) - n) / (mins(a.end) - mins(a.start)), c, 96)}<b>${T('{0} left', dur(mins(a.end) - n))}</b></div>`;
-    if (items.length) dyn += `<div class="check">${l && a ? `<h3>${pic(l, 'sm')} ${esc(l.title)}</h3>` : ''}` + items.map(i => `<button class="ck${ticks[i.id] ? ' on' : ''}" data-tick="${esc(i.id)}">${pic(i)}<span class="ck-t">${esc(i.text)}</span><i>${ticks[i.id] ? '✓' : ''}</i></button>`).join('') + '</div>';
+    if (items.length) dyn += `<div class="check">${l && a ? `<h3>${pic(l, 'sm')} ${esc(tx(l.title))}</h3>` : ''}` + items.map(i => `<button class="ck${ticks[i.id] ? ' on' : ''}" data-tick="${esc(i.id)}">${pic(i)}<span class="ck-t">${esc(tx(i.text))}</span><i>${ticks[i.id] ? '✓' : ''}</i></button>`).join('') + '</div>';
     if (lg.done) dyn += `<div class="did">✓ ${T('Done at {0}', clockOf(lg.done))} <button class="link" id="undo">${T('Undo')}</button></div>`;
     else dyn += `<button class="btn-done" id="done">${T('Done')} ✓</button>`;
     if (fresh || !$('#op-dyn')) {
       ov.innerHTML = `<div class="op" style="--c:${c}"><button class="x" id="op-x" aria-label="${T('Close')}">✕</button>`
         + `<div class="op-head">${pic(a || l, 'xl')}<div><h2>${esc((a || l).title)}</h2>${a ? `<div class="op-time">${a.start}${a.end ? '–' + a.end : ''}</div>` : ''}</div></div>`
         + (a && a.audio ? `<button class="btn-voice" id="op-voice">🔊 ${T('Listen to the message')}</button>` : '')
-        + (a && a.note ? `<div class="op-note">${esc(a.note)}</div>` : '')
+        + (a && a.note ? `<div class="op-note">${esc(tx(a.note))}</div>` : '')
         + (a ? videoHtml(a.video) : '') + `<div id="op-dyn"></div></div>`;
       ov.hidden = false;
     }
@@ -153,10 +158,10 @@ const Child = (() => {
     const a = al.act ? (D().acts || {})[al.act] : null; if (al.act && !a) return;
     st.alertNow = al;
     const box = $('#alert'), c = a ? catOf(a).c : '#0ea5e9', start = a ? mins(a.start) : 0, left = a ? start - nowMin() : 0;
-    const title = a ? a.title : al.msg.text, when = a ? (left > 0.5 ? T('in {0}', dur(left)) : T('Now')) + ' · ' + a.start : al.msg.from ? T('Message from {0}', al.msg.from) : T('Message from home');
+    const title = a ? tx(a.title) : al.msg.text, when = a ? (left > 0.5 ? T('in {0}', dur(left)) : T('Now')) + ' · ' + a.start : al.msg.from ? T('Message from {0}', al.msg.from) : T('Message from home');
     box.style.setProperty('--c', c);
     box.innerHTML = `<div class="al-in"><div class="al-when">${esc(when)}</div>${a ? pic(a, 'xxl') : `<span class="pic emo xxl">${esc(al.msg.emoji || '💬')}</span>`}<h1>${esc(title)}</h1>`
-      + (a && a.note ? `<p>${esc(a.note)}</p>` : '')
+      + (a && a.note ? `<p>${esc(tx(a.note))}</p>` : '')
       + (a && a.audio ? `<button class="btn-voice" id="al-voice">🔊 ${T('Listen again')}</button>` : '')
       + `<button class="btn-done big" id="al-ok">${T('Done')} ✓</button></div>`;
     box.hidden = false;
@@ -198,6 +203,7 @@ const Child = (() => {
     if (b.id === 'go') { Sound.unlock(); keepAwake(); try { if (matchMedia('(pointer:coarse)').matches) document.documentElement.requestFullscreen().catch(() => {}); } catch (x) {} $('#gate').hidden = true; st.started = true; checkAlerts(); return; }
     if (b.id === 'notif') { Notification.requestPermission().then(startGate); return; }
     if (b.dataset.tab) { st.tab = b.dataset.tab; render(); return; }
+    if (b.dataset.past) { st.showPast = !st.showPast; render(); return; }
     if (b.dataset.open) { openAct(b.dataset.open); return; }
     if (b.dataset.list) { openList(b.dataset.list); return; }
     if (b.dataset.tick) { tick(b.dataset.tick); return; }
@@ -247,7 +253,7 @@ function weekHtml(data, mon, edit) {
   for (let i = 0; i < 7; i++) {
     const d = addDays(mon, i), acts = dayActs(data, d);
     h += `<div class="wk-day${d === t ? ' today' : ''}${d < t ? ' gone' : ''}"><div class="wk-h"><b>${esc(dayName(d, 'short'))}</b> ${esc(dateShort(d))}</div>`
-      + acts.map(a => `<${edit ? `button data-edit="${a.id}" data-day="${d}"` : 'div'} class="wk-it${(logOf(data, d, a.id)).done ? ' isdone' : ''}" style="--c:${catOf(a).c}"><span class="wk-t">${a.start}</span>${pic(a, 'xs')}<span class="wk-n">${esc(a.title)}</span></${edit ? 'button' : 'div'}>`).join('')
+      + acts.map(a => `<${edit ? `button data-edit="${a.id}" data-day="${d}"` : 'div'} class="wk-it${(logOf(data, d, a.id)).done ? ' isdone' : ''}" style="--c:${catOf(a).c}"><span class="wk-t">${a.start}</span>${pic(a, 'xs')}<span class="wk-n">${esc(tx(a.title))}</span></${edit ? 'button' : 'div'}>`).join('')
       + (acts.length ? '' : '<div class="wk-none">–</div>') + '</div>';
   }
   return h + '</div>';
