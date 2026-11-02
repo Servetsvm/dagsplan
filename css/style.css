@@ -243,9 +243,13 @@ h1 { margin: 6px 0; }
 .p-tabs button { padding: 10px 4px; border-radius: 10px; font-weight: 600; font-size: 15px; }
 .p-tabs button.on { background: var(--brand); color: var(--brand-ink); }
 /* whose plan is shown, with several children */
-.kidbar { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; }
+.kidbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 0 0; }
 .kidbar button { padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--card); font-weight: 600; }
 .kidbar button.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+/* the child's screen and the calls, at the end of the row */
+.kb-acts { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.kidbar .p-call { padding: 0; width: 38px; height: 38px; border-radius: 50%; }
+.kidbar .p-child { white-space: nowrap; font-size: 14px; padding: 8px 12px; }
 .seg { display: inline-flex; background: var(--card); border-radius: 12px; padding: 3px; gap: 3px; margin: 12px 0 0; box-shadow: var(--shadow); }
 .seg.wrap { flex-wrap: wrap; display: flex; }
 .seg button { padding: 8px 14px; border-radius: 9px; font-weight: 600; }
