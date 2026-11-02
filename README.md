@@ -37,6 +37,12 @@ The family's data lives at `f/<family code>`. The code is 12 random letters and 
 (Settings → Copy / Share); nobody types it. It is the key to the plan: whoever has the link can read and change it, so
 share it only within the family. Other devices (the child's, the other parent's) join by opening that link.
 
+**The family password** keeps the site to the family: the bare address shows only a family password box, and only the
+right password opens the plan on a new device (which then asks whether the child or a parent uses it). The database keeps
+not the password but its hash, at `gate/<hash>` → the family code; the rules let a signed-in device read one such entry
+by its exact hash, never list them, and only create or delete an entry, never change one. The parents set or change
+the password in Settings → Family password. A new plan is made at the address `#new` (on a device with no plan yet).
+
 The PINs only guard the screens on a device:
 - **the mother's PIN** and **the father's PIN** (optional): the parent screen first asks who you are, then that parent's
   PIN; either PIN also opens the child's screen. Each parent changes only their own PIN (and the child's); the other

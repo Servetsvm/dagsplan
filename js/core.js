@@ -28,6 +28,8 @@ const dateShort = s => parseYmd(s).toLocaleDateString(LOCALE(), { day: 'numeric'
 function rid(n = 10) { const A = 'abcdefghjkmnpqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(n)); let r = ''; for (const x of b) r += A[x % A.length]; return r; }
 async function sha(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
 const pinHash = (code, pin) => sha('dagsplan:' + code + ':' + pin);
+// the family password's key (not case-sensitive, so a phone's capital first letter does not matter)
+const gateHash = pw => sha('dagsplan-gate:' + String(pw).trim().toLowerCase());
 
 // the categories and their colours (the week view and the cards use them)
 const CATS = {

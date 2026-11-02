@@ -86,6 +86,8 @@ const Parent = (() => {
       + `<label>${T('New PIN for {0} (4 digits; opens the child’s screen)', kid)}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
       + `<p class="muted small">${s.cpin ? '🔒 ' + T('The child’s screen asks for the PIN for {0}.', kid) : T('No PIN for {0}: the child’s screen opens without one.', kid)}</p>`
       + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button>${s.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the PIN for {0}', kid)}</button>` : ''}</div></div>`
+      + `<div class="card"><h3>🔑 ${T('Family password')}</h3><p class="muted">${s.gate ? T('A new device opens Dagsplan with the family password only.') : T('No family password yet: set one, so a new device can open Dagsplan with it.')}</p>`
+      + `<label>${T('New family password (at least 6 letters)')}<input id="s-gpw" type="password" autocomplete="new-password" autocapitalize="off"></label><button class="btn" id="s-gpw-save">${T('Save')}</button></div>`
       + `<div class="card"><h3>📱 ${T('The child’s screen')}</h3><p class="muted">${T('Open this link on the child’s tablet, phone or PC, then “Add to Home screen”.')} ${T('Another parent opens the same link and presses 🔒 Parent.')}</p>`
       + `<input readonly value="${esc(childLink())}" id="s-link"><div class="row"><button class="btn" id="s-copy">${T('Copy')}</button>${navigator.share ? `<button class="btn ghost" id="s-share">${T('Share')}</button>` : ''}<a class="btn ghost" href="#child">${T('Open the child’s screen here')}</a></div>`
       + (Store.cloud ? '' : `<p class="warn">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`) + '</div>'
@@ -242,6 +244,18 @@ const Parent = (() => {
         Store.update('settings', up); for (const i of ['#s-pin', '#s-pin2', '#s-cpin']) if ($(i)) $(i).value = ''; toast(T('Saved')); return;
       }
       case 's-cpin-off': Store.remove('settings/cpin'); toast(T('Saved')); return;
+      case 's-gpw-save': {
+        // the new password's key points at this family; the old key is removed so the old password stops working
+        const pw = $('#s-gpw').value; if (pw.trim().length < 6) { toast(T('The family password must have at least 6 letters')); return; }
+        const gh = await gateHash(pw), old = S().gate;
+        if (gh === old) { $('#s-gpw').value = ''; toast(T('Saved')); return; }
+        try {
+          const taken = await Store.gate(gh);
+          if ((taken && taken !== Store.code) || (!taken && !(await Store.setGate(gh, Store.code)))) { toast(T('This family password is taken — choose another')); return; }
+          if (old) await Store.setGate(old, null);
+        } catch (x) { toast(T('No connection — try again')); return; }
+        Store.update('settings', { gate: gh }); $('#s-gpw').value = ''; toast(T('Saved')); return;
+      }
       case 's-copy': { const i = $('#s-link'); i.select(); try { await navigator.clipboard.writeText(i.value); } catch (x) { document.execCommand('copy'); } toast(T('Copied')); return; }
       case 's-share': navigator.share({ title: 'Dagsplan', url: childLink() }).catch(() => {}); return;
       case 's-leave': if (confirm(T('Leave this family on this device? The plan itself is not deleted.'))) App.leave(); return;

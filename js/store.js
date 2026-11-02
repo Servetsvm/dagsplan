@@ -97,11 +97,20 @@ const Store = (() => {
       }
       emit();
     },
-    // does a family with this code exist? (local mode: in this browser)
-    async exists(code) {
-      if (!cloud) return !!localStorage.getItem('dp-data-' + code);
-      const tok = await Auth.token(); const r = await fetch(DB + '/f/' + code + '/settings/child.json?auth=' + tok);
-      return r.ok && (await r.json()) != null;
+    /* the family password: gate/<hash of the password> holds the family's code, so the password alone opens the plan
+       on a new device; the database never lists gate/, and the password itself is never stored (local mode: in this browser) */
+    async gate(h) {
+      if (!cloud) { try { return localStorage.getItem('dp-gate-' + h); } catch (e) { return null; } }
+      const tok = await Auth.token(); const r = await fetch(DB + '/gate/' + h + '.json?auth=' + tok);
+      if (!r.ok) throw new Error('db ' + r.status);
+      return r.json();
+    },
+    // code null removes it; false when the password is already taken by another family
+    async setGate(h, code) {
+      if (!cloud) { try { code ? localStorage.setItem('dp-gate-' + h, code) : localStorage.removeItem('dp-gate-' + h); } catch (e) {} return true; }
+      const tok = await Auth.token();
+      const r = await fetch(DB + '/gate/' + h + '.json?auth=' + tok, { method: code ? 'PUT' : 'DELETE', body: code ? JSON.stringify(code) : undefined });
+      return r.ok;
     },
     async fetchSettings(code) {
       if (!cloud) { try { return (JSON.parse(localStorage.getItem('dp-data-' + code)) || {}).settings || null; } catch (e) { return null; } }

@@ -7,6 +7,13 @@
         ".read": "auth != null && $code.matches(/^[a-z0-9]{12}$/)",
         ".write": "auth != null && $code.matches(/^[a-z0-9]{12}$/)"
       }
+    },
+    "gate": {
+      "$h": {
+        ".read": "auth != null && $h.matches(/^[0-9a-f]{64}$/)",
+        ".write": "auth != null && $h.matches(/^[0-9a-f]{64}$/) && (!data.exists() || !newData.exists())",
+        ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9]{12}$/)"
+      }
     }
   }
 }

@@ -42,8 +42,12 @@ const App = (() => {
     document.body.dataset.role = 'setup';
     const app = $('#app'); app.className = 'setup';
     let h = `<div class="su"><div class="logo">🗓️</div><h1>Dagsplan</h1><p class="muted">${T('A visual day plan with reminders, for the child’s screen and the parent’s phone.')}</p>${langRow()}`;
-    if (step === 'start') h += `<button class="btn big" data-su="new">👨‍👩‍👧 ${T('I am a parent: make a new plan')}</button><p class="muted small">${T('Joining a plan? Open the link from the parent’s Settings.')}</p>`;
-    else if (step === 'new') h += `<label>${T('The child’s name')}<input id="su-name" maxlength="30" autocomplete="off"></label>`
+    // only the family password opens Dagsplan on a new device; a new plan is made at the address #new
+    if (step === 'start') h += `<label>🔑 ${T('Family password')}<input id="su-pw" type="password" autocomplete="current-password" autocapitalize="off"></label>`
+      + `<button class="btn big" data-su="pw">${T('Open')}</button><p class="muted small">${T('Ask a parent for the family password.')}</p>`;
+    else if (step === 'device') h += `<p>${T('Who uses this device?')}</p><button class="btn big" data-su="asChild">👧 ${T('The child')}</button><button class="btn big ghost" data-su="asParent">👨‍👩‍👧 ${T('A parent')}</button>`;
+    else if (step === 'new') h += `<label>🔑 ${T('Family password (at least 6 letters; opens Dagsplan on a new device)')}<input id="su-gpw" type="password" autocomplete="new-password" autocapitalize="off"></label>`
+      + `<label>${T('The child’s name')}<input id="su-name" maxlength="30" autocomplete="off"></label>`
       + `<label>${T('Mother’s name')}<input id="su-mom" maxlength="30" autocomplete="off"></label>`
       + `<label>${T('Mother’s PIN (4 digits; opens the parent screen)')}<input id="su-pin" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
       + `<label>${T('Father’s name (optional)')}<input id="su-dad" maxlength="30" autocomplete="off"></label>`
@@ -51,7 +55,7 @@ const App = (() => {
       + `<label>${T('Child PIN (optional, 4 digits; opens the child’s screen)')}<input id="su-cpin" inputmode="numeric" maxlength="8" autocomplete="off"></label>`
       + `<label>${T('This phone belongs to')}<select id="su-me"><option value="mom">👩 ${T('Mother')}</option><option value="dad">👨 ${T('Father')}</option></select></label>`
       + `<label class="chk"><input type="checkbox" id="su-ex" checked> ${T('Start with examples (morning, school, swimming)')}</label>`
-      + `<button class="btn big" data-su="create">${T('Make the plan')}</button><button class="link" data-su="start">${T('Back')}</button>`;
+      + `<button class="btn big" data-su="create">${T('Make the plan')}</button>`;
     if (err) h += `<p class="warn">${esc(err)}</p>`;
     if (!Store.cloud) h += `<p class="muted small">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`;
     app.innerHTML = h + '</div>';
@@ -61,18 +65,30 @@ const App = (() => {
   const go = h => { if (location.hash === h) show(); else location.hash = h; };
   async function onSetup(b) {
     const s = b.dataset.su;
-    if (s === 'new' || s === 'start') { setup(s); return; }
+    if (s === 'pw') {
+      const pw = $('#su-pw').value; if (!pw.trim()) return;
+      b.disabled = true;
+      let code = null; try { code = await Store.gate(await gateHash(pw)); } catch (e) { setup('start', T('No connection — try again')); return; }
+      if (!code) { setup('start', T('Wrong family password')); return; }
+      put('dp-code', code); Store.open(code); setup('device'); return;
+    }
+    if (s === 'asChild' || s === 'asParent') { const r = s === 'asChild' ? 'child' : 'parent'; put('dp-home', r); go('#' + r); return; }
     if (s === 'create') {
-      const name = $('#su-name').value.trim(), pin = $('#su-pin').value.trim(), pin2 = $('#su-pin2').value.trim(), cpin = $('#su-cpin').value.trim();
-      if (!name) { setup('new', T('Write the child’s name')); return; }
+      const name = $('#su-name').value.trim(), pin = $('#su-pin').value.trim(), pin2 = $('#su-pin2').value.trim(), cpin = $('#su-cpin').value.trim(), gpw = $('#su-gpw').value;
+      // keeps what was typed when the form is shown again with a message
+      const again = msg => { const keep = ['#su-gpw', '#su-name', '#su-mom', '#su-dad'].map(i => [i, $(i).value]); setup('new', msg); keep.forEach(([i, v]) => { $(i).value = v; }); };
+      if (gpw.trim().length < 6) { again(T('The family password must have at least 6 letters')); return; }
+      if (!name) { again(T('Write the child’s name')); return; }
       const me = $('#su-me').value === 'dad' && pin2 ? 'dad' : 'mom';
       const bad = pinsBad(pin, pin2, cpin) || (pin ? '' : T('The PIN must be 4–8 digits'));
-      if (bad) { const m = $('#su-mom').value, f = $('#su-dad').value; setup('new', bad); $('#su-name').value = name; $('#su-mom').value = m; $('#su-dad').value = f; return; }
-      const code = rid(12), ex = $('#su-ex').checked;
+      if (bad) { again(bad); return; }
+      const code = rid(12), ex = $('#su-ex').checked, gh = await gateHash(gpw);
       b.disabled = true;
+      try { if ((await Store.gate(gh)) || !(await Store.setGate(gh, code))) { again(T('This family password is taken — choose another')); return; } }
+      catch (e) { again(T('No connection — try again')); return; }
       put('dp-code', code); put('dp-parent-' + code, '1'); put('dp-who-' + code, me); put('dp-home', 'parent');
       Store.open(code);
-      const set = { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now() };
+      const set = { child: name, pin: await pinHash(code, pin), goal: 20, created: Date.now(), gate: gh };
       const mom = $('#su-mom').value.trim(), dad = $('#su-dad').value.trim();
       if (mom) set.mom = mom;
       if (dad) set.dad = dad;
@@ -144,7 +160,7 @@ const App = (() => {
     if (k && k !== get('dp-code')) { put('dp-code', k); location.replace('#' + (r || 'child')); location.reload(); return; }
     const code = get('dp-code');
     if (cur) { cur.stop(); cur = null; }
-    if (!code) { setup(); return; }
+    if (!code) { setup(r === 'new' ? 'new' : 'start'); return; }
     if (Store.code !== code) Store.open(code);
     if (r === 'parent') {
       if (!parentOk(code)) {
