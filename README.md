@@ -7,11 +7,11 @@ Installable web app (PWA), Norwegian (bokmål) first, with Turkish and English.
   the running activity with a shrinking time pie and a countdown to the next one, full-screen reminders (sound, the
   parent's recorded voice, or silent) confirmed with **Ferdig**, picture checklists ticked step by step, the week in
   category colours, stars against a weekly goal, and a "first – then" screen. Nothing can be edited here.
-  Holding the clock for 3 seconds asks for the parent PIN and opens the parent screen.
+  The **🔒 Parent** button (or holding the clock for 3 seconds) asks for a parent PIN and opens the parent screen.
 - **Parent screen** (`#parent`): add, edit and repeat activities (once, every day, chosen weekdays, until a date; delete
   one day only), with an emoji or photo, a note, a voice message (up to 30 s), a video link, a checklist and stars;
   make checklists with pictures; see what the child has ticked, finished and confirmed (the Log); send a message that
-  pops up full screen on the child's screen right now; set first–then, the star goal, the name and the PIN.
+  pops up full screen on the child's screen right now; set first–then, the star goal, the name and the PINs.
 
 ## Trying it on this computer
 
@@ -33,9 +33,14 @@ and the parent and child screens sync only between tabs of the same browser (ope
    it shows, copy `apiKey` and `databaseURL` into `js/config.js`.
 5. Raise `VERSION` in `sw.js`, and put the folder on a host (below).
 
-The family's data lives at `f/<family code>`. The code is 12 random letters and digits and is the key to the plan:
-whoever has the code (or the child's link) can read and change it, so share it only within the family. The parent PIN
-only guards the parent screen on the child's device.
+The family's data lives at `f/<family code>`. The code is 12 random letters and digits, carried in the child's link
+(Settings → Copy / Share); nobody types it. It is the key to the plan: whoever has the link can read and change it, so
+share it only within the family. Other devices (the child's, the other parent's) join by opening that link.
+
+The PINs only guard the screens on a device:
+- **the mother's PIN** and **the father's PIN** (optional): either opens the parent screen, and the child's screen too;
+- **the child's PIN** (optional): opens the child's screen until the app is closed, never the parent screen.
+Opening the child's screen locks the parent screen again, so going back to it needs a parent PIN.
 
 ## Putting it online (installable on phone, tablet and PC)
 
@@ -72,7 +77,7 @@ Until then: keep the child's screen open on a tablet at home, and on the phone u
 | `js/store.js` | the family's data and the live sync (Firebase REST + EventSource, or this browser) |
 | `js/child.js` | the child's screen and reminders |
 | `js/parent.js` | the parent's screen |
-| `js/app.js` | setting up / joining a family, the PIN pad, which screen to show |
+| `js/app.js` | setting up a family, the PIN pad and the PINs, which screen to show |
 | `css/style.css` | look and layout |
 | `sw.js`, `manifest.webmanifest`, `icons/` | installable / offline app (`tools/icons.ps1` draws the icons) |
 | `database.rules.json` | the Realtime Database rules |

@@ -75,11 +75,13 @@ const Parent = (() => {
       + `<div class="row"><button class="btn" id="ft-save">${T('Show on the screen')}</button>${s.ft ? `<button class="btn ghost" id="ft-clear">${T('Remove')}</button>${s.ft.firstDone ? `<span class="ok">✓ ${T('First part done {0}', clockOf(s.ft.firstDone))}</span>` : ''}` : ''}</div></div>`
       + `<div class="card"><h3>👧 ${T('Child')}</h3><label>${T('Name')}<input id="s-name" maxlength="30" value="${esc(s.child || '')}"></label>`
       + `<label>${T('Star goal per week')}<input id="s-goal" type="number" min="0" max="200" value="${esc(s.goal || 0)}"></label>`
-      + `<label>${T('New parent PIN (4 digits)')}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<label>${T('New mother’s PIN (4 digits)')}<input id="s-pin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<label>${T('New father’s PIN (4 digits)')}<input id="s-pin2" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
+      + `<p class="muted small">${s.pin2 ? '👩 👨 ' + T('The mother and the father each have their own PIN.') : T('No father’s PIN yet: only the mother’s PIN opens the parent screen.')}</p>`
       + `<label>${T('New child PIN (4 digits; opens the child’s screen)')}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
       + `<p class="muted small">${s.cpin ? '🔒 ' + T('The child’s screen asks for the child PIN.') : T('No child PIN: the child’s screen opens without one.')}</p>`
       + `<div class="row"><button class="btn" id="s-save">${T('Save')}</button>${s.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the child PIN')}</button>` : ''}</div></div>`
-      + `<div class="card"><h3>📱 ${T('The child’s screen')}</h3><p class="muted">${T('Open this link on the child’s tablet, phone or PC, then “Add to Home screen”. Family code: {0}', `<b class="code">${esc(Store.code)}</b>`)}</p>`
+      + `<div class="card"><h3>📱 ${T('The child’s screen')}</h3><p class="muted">${T('Open this link on the child’s tablet, phone or PC, then “Add to Home screen”.')} ${T('Another parent opens the same link and presses 🔒 Parent.')}</p>`
       + `<input readonly value="${esc(childLink())}" id="s-link"><div class="row"><button class="btn" id="s-copy">${T('Copy')}</button>${navigator.share ? `<button class="btn ghost" id="s-share">${T('Share')}</button>` : ''}<a class="btn ghost" href="#child">${T('Open the child’s screen here')}</a></div>`
       + (Store.cloud ? '' : `<p class="warn">${T('Local mode: the plan is kept in this browser only. Add the Firebase settings to sync between devices (see README).')}</p>`) + '</div>'
       + `<div class="card"><h3>🔔 ${T('About reminders')}</h3><p class="muted">${T('Reminders are sure when the child’s screen is open (a tablet on the wall with the screen kept on is best). With the app in the background a notification is shown, sometimes a little late. When the app is closed, a web app cannot ring: that needs the Android app version later.')}</p></div>`
@@ -221,12 +223,15 @@ const Parent = (() => {
       case 'ft-save': { const a = $('#ft1-t').value.trim(), c = $('#ft2-t').value.trim(), f = S().ft || { first: {}, then: {} }; if (!a || !c) { toast(T('Write both parts')); return; } Store.set('settings/ft', { first: { emoji: st.ft1 || f.first.emoji || '📚', text: a }, then: { emoji: st.ft2 || f.then.emoji || '🎮', text: c } }); st.ft1 = st.ft2 = null; toast(T('Saved')); return; }
       case 'ft-clear': Store.remove('settings/ft'); return;
       case 's-save': {
-        const pin = $('#s-pin').value.trim(), cpin = $('#s-cpin').value.trim(), up = { child: $('#s-name').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
-        if ((pin && !/^\d{4,8}$/.test(pin)) || (cpin && !/^\d{4,8}$/.test(cpin))) { toast(T('The PIN must be 4–8 digits')); return; }
+        const pin = $('#s-pin').value.trim(), pin2 = $('#s-pin2').value.trim(), cpin = $('#s-cpin').value.trim(), up = { child: $('#s-name').value.trim(), goal: Math.max(0, +$('#s-goal').value || 0) };
+        const bad = App.pinsBad(pin, pin2, cpin); if (bad) { toast(bad); return; }
         if (pin) up.pin = await pinHash(Store.code, pin);
+        if (pin2) up.pin2 = await pinHash(Store.code, pin2);
         if (cpin) up.cpin = await pinHash(Store.code, cpin);
-        if ((up.cpin || S().cpin) && (up.cpin || S().cpin) === (up.pin || S().pin)) { toast(T('The child PIN must differ from the parent PIN')); return; }
-        Store.update('settings', up); $('#s-pin').value = $('#s-cpin').value = ''; toast(T('Saved')); return;
+        // a new PIN may not be the same as one of the PINs kept
+        const all = ['pin', 'pin2', 'cpin'].map(k => up[k] || S()[k]).filter(Boolean);
+        if (new Set(all).size < all.length) { toast(T('The PINs must all be different')); return; }
+        Store.update('settings', up); $('#s-pin').value = $('#s-pin2').value = $('#s-cpin').value = ''; toast(T('Saved')); return;
       }
       case 's-cpin-off': Store.remove('settings/cpin'); toast(T('Saved')); return;
       case 's-copy': { const i = $('#s-link'); i.select(); try { await navigator.clipboard.writeText(i.value); } catch (x) { document.execCommand('copy'); } toast(T('Copied')); return; }
