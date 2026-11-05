@@ -173,12 +173,13 @@ const Call = (() => {
     let el = $('#call');
     if (!st) { if (el) el.remove(); shape = ''; return; }
     if (!el) { el = document.createElement('div'); el.id = 'call'; el.className = 'call'; el.addEventListener('click', onClick); document.body.appendChild(el); }
+    el.classList.toggle('pick', !!st.pick);
     const i = self(), c = Store.data.call || {}, ic = st.video ? '📹' : '📞';
     const others = people().filter(w => w !== i);
     let h;
     if (st.pick) h = `<div class="call-mid"><div class="call-ico">${ic}</div><h2>${T('Whom do you want to call?')}</h2></div>`
       + `<div class="call-pick">${others.map(w => `<button class="call-b yes" data-c="to" data-to="${w}">${icon(w)} ${esc(nameOf(w))}</button>`).join('')}`
-      + (others.length > 1 ? `<button class="call-b all" data-c="to" data-to="${others.join(',')}">👨‍👩‍👧 ${T('Everyone')}</button>` : '') + '</div>'
+      + (others.length > 1 ? `<button class="call-b all" data-c="to" data-to="${others.join(',')}">👨‍👩‍👧 ${T('The whole family')}</button>` : '') + '</div>'
       + `<div class="call-btns"><button class="call-b no" data-c="cancel">✕ ${T('Cancel')}</button></div>`;
     else if (st.ringing) {
       const group = Object.keys(c.invited || {}).filter(w => w !== i && w !== st.from);

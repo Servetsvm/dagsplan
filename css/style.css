@@ -96,6 +96,12 @@ h1 { margin: 6px 0; }
 .call-pick { position: relative; z-index: 1; display: grid; gap: 14px; width: min(360px, 100%); margin: 0 auto; }
 .call-pick .call-b { font-size: 24px; min-height: 76px; }
 .call-pick .call-b.all { background: #0f766e; }
+/* choosing whom to call: the question and the names at the top, Cancel right under them */
+.call.pick { justify-content: flex-start; gap: 18px; overflow-y: auto; }
+.call.pick .call-mid { margin-top: 2vh; }
+.call.pick .call-ico { width: 84px; height: 84px; font-size: 44px; }
+.call.pick .call-mid h2 { font-size: 24px; margin-top: 10px; }
+.call.pick .call-btns { margin-top: 0; }
 /* the people in a call: one big picture, two side by side (stacked on a phone held upright), more in a grid */
 .call-grid { position: absolute; inset: 0; display: grid; gap: 4px; background: #000; }
 .call-grid.n2 { grid-template-columns: 1fr 1fr; }
