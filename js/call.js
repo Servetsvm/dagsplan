@@ -75,6 +75,8 @@ const Call = (() => {
     for (const w of to) invited[w] = true;
     st = { id, video, local, joined: true, at, peers: {}, from: i };
     Store.set('call', { id, from: i, invited, video: !!video, ts: at, joined: { [i]: { dev, at } } });
+    // a phone where Dagsplan is closed rings through the ntfy app
+    Ntfy.ring(i, to, video);
     st.timer = setTimeout(() => { if (st && st.id === id && !Object.keys(st.peers).length) { toast(T('No answer')); leave(); } }, RING);
     draw();
   }

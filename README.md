@@ -71,7 +71,10 @@ or the father) and only that parent's devices ring (where the parent screen is o
 calls the child's screens. Both sides see who calls whom. The first device to answer takes the call. The picture and sound go straight between the two devices (WebRTC); the database only carries
 the set-up (`f/<code>/call`), which is removed when the call ends.
 
-- A call reaches only a device with Dagsplan **open** on the child's or the parent screen (like the reminders).
+- A call reaches a device with Dagsplan **open** on the child's or the parent screen. A phone where Dagsplan is closed
+  rings through the free **ntfy** app: each family member has a secret ntfy topic (settings/ntfy/<who>), their phone's
+  ntfy app subscribes to it once (Settings → Calls when Dagsplan is closed), and a call sends "… is calling you" to the
+  topics of the people called; tapping it opens Dagsplan to answer. Only that line of text goes through ntfy.sh.
 - The browser asks once for the camera and the microphone.
 - Between different networks (a phone on mobile data and a PC on Wi-Fi, two homes) the devices usually cannot reach
   each other directly, and the call needs a **relay server (TURN)**. Make a free account at https://www.metered.ca/stun-turn

@@ -81,6 +81,16 @@ const Parent = (() => {
     const all = Object.values(cur).filter(Boolean);
     return new Set(all).size === all.length;
   }
+  /* ---- calls when Dagsplan is closed: a person's phone subscribes to their secret topic in the free ntfy app ---- */
+  function ntfyBlock(who) {
+    const t = Ntfy.topicOf(who); if (!t) return '';
+    return `<div class="ntfy"><b>📳 ${T('{0}’s phone rings for calls even when Dagsplan is closed:', esc(App.nameOf(who)))}</b>`
+      + `<ol><li>${T('Install the free ntfy app')}: <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">Android</a> · <a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener">iPhone</a></li>`
+      + `<li>${T('On that phone, tap')} <a class="btn ghost sm" href="${esc(Ntfy.link(who))}">📳 ${T('Subscribe in ntfy')}</a> ${T('or add the topic by hand')}: <code class="code">${esc(t)}</code></li>`
+      + `<li>${T('In ntfy, allow notifications and set the topic to ring loudly.')}</li></ol>`
+      + `<button class="btn ghost" data-ntfytest="${esc(who)}">🔔 ${T('Send a test')}</button></div>`;
+  }
+  function ntfyCard(who, title) { return who ? `<div class="card"><h3>📳 ${T('Calls when Dagsplan is closed')} · ${title}</h3>${ntfyBlock(who) || `<p class="muted">${T('Not ready yet: open Settings again in a moment.')}</p>`}</div>` : ''; }
   function childLink() { return location.href.split('#')[0] + '#child?k=' + Store.code; }
   function settingsHtml() {
     const s = S(), ks = KS(), f = ks.ft || { first: {}, then: {} }, many = kids().length > 1;
@@ -98,6 +108,7 @@ const Parent = (() => {
       + `<label>${T('New PIN for {0} (4 digits; opens the child’s screen)', kid)}<input id="s-cpin" inputmode="numeric" maxlength="8" placeholder="••••"></label>`
       + `<p class="muted small">${ks.cpin ? '🔒 ' + T('The child’s screen asks for the PIN for {0}.', kid) : T('No PIN for {0}: the child’s screen opens without one.', kid)}</p>`
       + `<div class="row"><button class="btn" id="s-kid-save">${T('Save')}</button>${ks.cpin ? `<button class="btn ghost" id="s-cpin-off">${T('Remove the PIN for {0}', kid)}</button>` : ''}${K() !== 'child' ? `<button class="btn ghost danger" id="s-kid-del">${T('Remove {0}', kid)}</button>` : ''}</div>`
+      + ntfyBlock(K())
       + `<div class="row"><input id="s-newkid" maxlength="30" placeholder="${T('The new child’s name')}"><button class="btn ghost" id="s-kid-add">＋ ${T('Add a child')}</button></div></div>`
       + `<div class="card"><h3>👨‍👩‍👧 ${T('Family')}</h3>`
       + `<label>${T('Mother’s name')}<input id="s-mom" maxlength="30" value="${esc(s.mom || '')}"></label>`
@@ -119,6 +130,8 @@ const Parent = (() => {
       + `<div class="card"><h3>💻 ${T('This device')}</h3><label>${T('When Dagsplan opens on this device, show')}<select id="s-home">`
       + `<option value="parent"${App.home === 'parent' ? ' selected' : ''}>👨‍👩‍👧 ${T('the parent screen (asks the PIN)')}</option><option value="child"${App.home === 'child' ? ' selected' : ''}>👧 ${T('the child’s screen')}</option></select></label>`
       + (many ? `<label>${T('The child’s screen on this device is for')}<select id="s-devkid">${kids().map(k => `<option value="${esc(k.id)}"${App.kid === k.id ? ' selected' : ''}>👧 ${esc(k.name || T('the child'))}</option>`).join('')}</select></label>` : '') + '</div>'
+      // calls that ring this phone when Dagsplan is closed
+      + ntfyCard(me, T('Your phone'))
       + `<div class="card"><h3>🔔 ${T('About reminders')}</h3><p class="muted">${T('Reminders are sure when the child’s screen is open (a tablet on the wall with the screen kept on is best). With the app in the background a notification is shown, sometimes a little late. When the app is closed, a web app cannot ring: that needs the Android app version later.')}</p></div>`
       + `<div class="card"><button class="btn ghost" id="s-leave">${T('Leave this family on this device')}</button></div>`;
   }
@@ -229,6 +242,7 @@ const Parent = (() => {
     const ds = b.dataset;
     if (ds.ptab) { st.tab = ds.ptab; render(); return; }
     if (ds.kid) { st.kid = ds.kid; render(); return; }
+    if (ds.ntfytest) { Ntfy.test(ds.ntfytest).then(ok => toast(ok ? T('Sent') : T('No connection — try again'))); return; }
     if (ds.forkid !== undefined) { grab(); st.ed.a.kid = ds.forkid; renderEd(); return; }
     // the child's screen here shows the child chosen above
     if (ds.childscreen) { App.kid = K(); location.hash = '#child'; return; }
@@ -331,6 +345,7 @@ const Parent = (() => {
     start() {
       document.body.dataset.role = 'parent';
       off = Store.on(() => { if (!st.ed && !st.led) render(); });
+      Ntfy.ensure(); Ntfy.seen(App.who());
       render();
       document.addEventListener('click', onClick); document.addEventListener('change', onChange);
       this.t = setInterval(() => { if (!st.ed && !st.led && st.tab !== 'settings') render(); }, 60000);

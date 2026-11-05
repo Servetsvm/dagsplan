@@ -228,6 +228,7 @@ const Child = (() => {
     start() {
       document.body.dataset.role = 'child';
       off = Store.on(() => { render(); checkAlerts(); });
+      Ntfy.seen(K());
       render();
       document.addEventListener('click', onClick); document.addEventListener('pointerdown', onHold);
       timers.push(setInterval(tickClock, 1000), setInterval(() => { if (st.started) checkAlerts(); }, 5000));
